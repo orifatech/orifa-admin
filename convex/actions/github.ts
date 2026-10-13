@@ -1,0 +1,191 @@
+"use node";
+
+import { action } from "../_generated/server";
+import { v } from "convex/values";
+import { Octokit } from "@octokit/rest";
+import { api } from "../_generated/api";
+
+function setDeepKey(obj: Record<string, any>, path: string, value: any) {
+  const parts = path.split(".");
+  let current = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    if (!(part in current) || typeof current[part] !== "object" || current[part] === null) {
+      current[part] = {};
+    }
+    current = current[part];
+  }
+  current[parts[parts.length - 1]] = value;
+}
+
+export const createPullRequest = action({
+  args: {
+    projectId: v.id("projects"),
+    changeIds: v.array(v.id("stagedChanges")),
+    customTitle: v.optional(v.string()),
+    customDescription: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const token = process.env.GITHUB_TOKEN || process.env.GITHUB_ACCESS_TOKEN;
+    if (!token) {
+      throw new Error(
+        "GitHub Access Token is missing. Please configure GITHUB_TOKEN in your Convex environment variables."
+      );
+    }
+
+    const octokit = new Octokit({ auth: token });
+
+    // 1. Fetch project details
+    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    if (!project) throw new Error("Project not found.");
+
+    const owner = project.githubRepoOwner;
+    const repo = project.githubRepoName;
+    const baseBranch = project.githubDefaultBranch || "main";
+
+    // 2. Fetch staged changes
+    const allProjectChanges = await ctx.runQuery(api.stagedChanges.listByProject, {
+      projectId: args.projectId,
+    });
+    const targetChanges = allProjectChanges.filter((c) =>
+      args.changeIds.includes(c._id)
+    );
+
+    if (targetChanges.length === 0) {
+      throw new Error("No staged changes found to commit.");
+    }
+
+    // 3. Get latest commit SHA on base branch
+    const { data: baseRef } = await octokit.rest.git.getRef({
+      owner,
+      repo,
+      ref: `heads/${baseBranch}`,
+    });
+    const baseSha = baseRef.object.sha;
+
+    // 4. Create feature branch
+    const timestamp = Date.now();
+    const branchName = `orifa-update-${timestamp}`;
+    await octokit.rest.git.createRef({
+      owner,
+      repo,
+      ref: `refs/heads/${branchName}`,
+      sha: baseSha,
+    });
+
+    // 5. Group changes by target file and apply updates
+    const changesByFile = new Map<string, typeof targetChanges>();
+    for (const ch of targetChanges) {
+      const list = changesByFile.get(ch.targetFile) || [];
+      list.push(ch);
+      changesByFile.set(ch.targetFile, list);
+    }
+
+    for (const [filePath, fileChanges] of changesByFile.entries()) {
+      let fileSha: string | undefined;
+      let currentContent: any = {};
+
+      try {
+        const { data: fileData } = await octokit.rest.repos.getContent({
+          owner,
+          repo,
+          path: filePath,
+          ref: branchName,
+        });
+
+        if (!Array.isArray(fileData) && fileData.type === "file") {
+          fileSha = fileData.sha;
+          const decoded = Buffer.from(fileData.content, "base64").toString("utf-8");
+          if (filePath.endsWith(".json")) {
+            currentContent = JSON.parse(decoded);
+          } else {
+            currentContent = decoded;
+          }
+        }
+      } catch (err: any) {
+        // File may be new, proceed with blank
+      }
+
+      let updatedContentStr = "";
+      if (filePath.endsWith(".json")) {
+        for (const ch of fileChanges) {
+          setDeepKey(currentContent, ch.contentKey, ch.proposedValue);
+        }
+        updatedContentStr = JSON.stringify(currentContent, null, 2) + "\n";
+      } else {
+        // Markdown or raw text
+        const latestChange = fileChanges[fileChanges.length - 1];
+        updatedContentStr = latestChange.proposedValue;
+      }
+
+      await octokit.rest.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path: filePath,
+        message: `chore(cms): update ${filePath} via Orifa Admin`,
+        content: Buffer.from(updatedContentStr).toString("base64"),
+        sha: fileSha,
+        branch: branchName,
+      });
+    }
+
+    // 6. Generate Pull Request description table
+    const tableRows = targetChanges
+      .map(
+        (c) =>
+          `| \`${c.targetFile}\` | \`${c.contentKey}\` | \`${c.contentType}\` | ${
+            c.originalValue.length > 50
+              ? c.originalValue.slice(0, 47) + "..."
+              : c.originalValue
+          } | **${
+            c.proposedValue.length > 50
+              ? c.proposedValue.slice(0, 47) + "..."
+              : c.proposedValue
+          }** |`
+      )
+      .join("\n");
+
+    const prBody = `## 🚀 CMS Content Update
+
+This Pull Request was automatically prepared by **Orifa Admin Platform** for review.
+
+### Summary of Changes:
+| Target File | Key | Type | Original | Proposed |
+| :--- | :--- | :--- | :--- | :--- |
+${tableRows}
+
+${args.customDescription ? `\n### Reviewer Notes:\n${args.customDescription}` : ""}
+
+---
+*Generated by Orifa Technologies Hub | Branch: \`${branchName}\`*
+`;
+
+    // 7. Open GitHub Pull Request
+    const { data: pr } = await octokit.rest.pulls.create({
+      owner,
+      repo,
+      title:
+        args.customTitle ||
+        `CMS Update: ${targetChanges.length} change${
+          targetChanges.length > 1 ? "s" : ""
+        } on ${new Date().toLocaleDateString()}`,
+      head: branchName,
+      base: baseBranch,
+      body: prBody,
+    });
+
+    // 8. Record PR status in Convex
+    await ctx.runMutation(api.stagedChanges.markPRCreated, {
+      changeIds: args.changeIds,
+      pullRequestUrl: pr.html_url,
+      pullRequestNumber: pr.number,
+      branchName,
+    });
+
+    return {
+      pullRequestUrl: pr.html_url,
+      pullRequestNumber: pr.number,
+      branchName,
+    };
+  },
+});

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.96",
+    "@img/sharp-libvips-linux-arm64": "^1.3.4",
+    "@img/sharp-linux-arm64": "^0.35.5",
     "@octokit/rest": "^22.0.1",
     "clsx": "^2.1.1",
     "convex": "^1.46.0",

@@ -51,6 +51,8 @@ export const create = mutation({
     githubRepoName: v.string(),
     githubDefaultBranch: v.string(),
     contentRootPath: v.string(),
+    gitPublishMode: v.optional(v.union(v.literal("pull_request"), v.literal("direct_commit"))),
+    hasMaintenanceContract: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await assertSuperAdmin(ctx);
@@ -60,8 +62,14 @@ export const create = mutation({
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
+    const gitPublishMode = args.gitPublishMode ?? "pull_request";
+    const hasMaintenanceContract =
+      args.hasMaintenanceContract ?? (gitPublishMode === "pull_request");
+
     return await ctx.db.insert("projects", {
       ...args,
+      gitPublishMode,
+      hasMaintenanceContract,
       editorSecretToken,
       createdAt: Date.now(),
     });
@@ -79,6 +87,8 @@ export const update = mutation({
     githubRepoName: v.optional(v.string()),
     githubDefaultBranch: v.optional(v.string()),
     contentRootPath: v.optional(v.string()),
+    gitPublishMode: v.optional(v.union(v.literal("pull_request"), v.literal("direct_commit"))),
+    hasMaintenanceContract: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { projectId, ...updates } = args;

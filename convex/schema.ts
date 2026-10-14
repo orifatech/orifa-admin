@@ -52,6 +52,12 @@ export default defineSchema({
     
     // In-Place Editor Access Key
     editorSecretToken: v.string(),
+
+    // Git & Deployment Strategy
+    // "pull_request": Clients with maintenance contract (agency reviews & accepts PR)
+    // "direct_commit": Clients without maintenance contract (commits directly to production branch)
+    gitPublishMode: v.optional(v.union(v.literal("pull_request"), v.literal("direct_commit"))),
+    hasMaintenanceContract: v.optional(v.boolean()),
     createdAt: v.number(),
   }).index("by_org", ["organizationId"]),
 
@@ -82,9 +88,11 @@ export default defineSchema({
     reviewerFeedback: v.optional(v.string()),
     batchName: v.optional(v.string()), // e.g. "Spring Refresh 2026"
     
-    // GitHub PR Automation Reference
+    // GitHub PR & Direct Commit Automation Reference
     pullRequestUrl: v.optional(v.string()),
     pullRequestNumber: v.optional(v.number()),
+    commitUrl: v.optional(v.string()),
+    commitSha: v.optional(v.string()),
     branchName: v.optional(v.string()),
     committedAt: v.optional(v.number()),
     createdAt: v.number(),

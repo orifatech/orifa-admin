@@ -161,3 +161,23 @@ export const markPRCreated = mutation({
     }
   },
 });
+
+export const markDirectCommitted = mutation({
+  args: {
+    changeIds: v.array(v.id("stagedChanges")),
+    commitUrl: v.string(),
+    commitSha: v.string(),
+    branchName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    for (const id of args.changeIds) {
+      await ctx.db.patch(id, {
+        status: "merged",
+        commitUrl: args.commitUrl,
+        commitSha: args.commitSha,
+        branchName: args.branchName,
+        committedAt: Date.now(),
+      });
+    }
+  },
+});

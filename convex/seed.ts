@@ -42,9 +42,16 @@ export const seedSampleData = mutation({
         githubDefaultBranch: "main",
         contentRootPath: "src/content",
         editorSecretToken: "orifa_sec_" + Math.random().toString(36).slice(2, 10),
+        gitPublishMode: "pull_request",
+        hasMaintenanceContract: true,
         createdAt: Date.now(),
       });
       project = await ctx.db.get(projectId);
+    } else if (!project.gitPublishMode) {
+      await ctx.db.patch(project._id, {
+        gitPublishMode: "pull_request",
+        hasMaintenanceContract: true,
+      });
     }
 
     if (!project) throw new Error("Failed to create project.");

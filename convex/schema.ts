@@ -61,7 +61,7 @@ export default defineSchema({
   stagedChanges: defineTable({
     projectId: v.id("projects"),
     organizationId: v.id("organizations"),
-    authorId: v.id("users"),
+    authorId: v.optional(v.id("users")),
     
     // Target File in Codebase
     targetFile: v.string(),     // e.g. "src/content/home.json" or "src/content/blog/post.md"
@@ -150,7 +150,8 @@ export default defineSchema({
     autoRenewStatus: v.boolean(),
     status: v.union(v.literal("healthy"), v.literal("expiring_soon"), v.literal("expired")),
     notes: v.optional(v.string()),
-  }).index("by_expiry", ["expiresAt"]),
+  }).index("by_expiry", ["expiresAt"])
+    .index("by_org", ["organizationId"]),
 
   // ==========================================
   // 7. AGENCY OPS: SUBSCRIPTIONS & RETAINERS

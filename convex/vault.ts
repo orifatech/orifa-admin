@@ -45,20 +45,22 @@ export const list = query({
     const viewer = await getViewerOrThrow(ctx);
 
     let creds;
+    const targetOrgId = args.organizationId;
     if (viewer.role === "super_admin") {
-      if (args.organizationId) {
+      if (targetOrgId) {
         creds = await ctx.db
           .query("vaultCredentials")
-          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
           .collect();
       } else {
         creds = await ctx.db.query("vaultCredentials").collect();
       }
     } else {
-      if (!viewer.organizationId) return [];
+      const viewerOrgId = viewer.organizationId;
+      if (!viewerOrgId) return [];
       creds = await ctx.db
         .query("vaultCredentials")
-        .withIndex("by_org", (q) => q.eq("organizationId", viewer.organizationId))
+        .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
         .collect();
     }
 
@@ -178,9 +180,9 @@ export const revealSecret = mutation({
     const cipherBytes = base64ToUint8Array(cred.encryptedSecret);
 
     const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv },
+      { name: "AES-GCM", iv: iv as unknown as BufferSource },
       key,
-      cipherBytes
+      cipherBytes as unknown as BufferSource
     );
 
     const plainSecret = new TextDecoder().decode(decryptedBuffer);

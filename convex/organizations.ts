@@ -37,9 +37,9 @@ export const create = mutation({
   args: {
     name: v.string(),
     slug: v.string(),
-    contactEmail: v.string(),
+    contactEmail: v.optional(v.string()),
     phone: v.optional(v.string()),
-    billingStatus: v.union(v.literal("active"), v.literal("past_due"), v.literal("free")),
+    billingStatus: v.optional(v.union(v.literal("active"), v.literal("past_due"), v.literal("free"))),
   },
   handler: async (ctx, args) => {
     await assertSuperAdmin(ctx);
@@ -54,7 +54,11 @@ export const create = mutation({
     }
 
     return await ctx.db.insert("organizations", {
-      ...args,
+      name: args.name,
+      slug: args.slug,
+      contactEmail: args.contactEmail ?? "",
+      phone: args.phone,
+      billingStatus: args.billingStatus ?? "active",
       createdAt: Date.now(),
     });
   },

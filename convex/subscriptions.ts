@@ -8,20 +8,22 @@ export const list = query({
     const viewer = await getViewerOrThrow(ctx);
 
     let subs;
+    const targetOrgId = args.organizationId;
     if (viewer.role === "super_admin") {
-      if (args.organizationId) {
+      if (targetOrgId) {
         subs = await ctx.db
           .query("subscriptions")
-          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
           .collect();
       } else {
         subs = await ctx.db.query("subscriptions").collect();
       }
     } else {
-      if (!viewer.organizationId) return [];
+      const viewerOrgId = viewer.organizationId;
+      if (!viewerOrgId) return [];
       subs = await ctx.db
         .query("subscriptions")
-        .withIndex("by_org", (q) => q.eq("organizationId", viewer.organizationId))
+        .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
         .collect();
     }
 

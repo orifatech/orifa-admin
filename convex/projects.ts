@@ -7,21 +7,23 @@ export const list = query({
   handler: async (ctx, args) => {
     const viewer = await getViewerOrThrow(ctx);
 
+    const targetOrgId = args.organizationId;
     if (viewer.role === "super_admin") {
-      if (args.organizationId) {
+      if (targetOrgId) {
         return await ctx.db
           .query("projects")
-          .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
           .collect();
       }
       return await ctx.db.query("projects").collect();
     }
 
-    if (!viewer.organizationId) return [];
+    const viewerOrgId = viewer.organizationId;
+    if (!viewerOrgId) return [];
 
     return await ctx.db
       .query("projects")
-      .withIndex("by_org", (q) => q.eq("organizationId", viewer.organizationId))
+      .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
       .collect();
   },
 });

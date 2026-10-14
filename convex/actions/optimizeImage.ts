@@ -2,7 +2,6 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
-import sharp from "sharp";
 import { api } from "../_generated/api";
 
 export const optimizeToWebp = action({
@@ -11,7 +10,16 @@ export const optimizeToWebp = action({
     storageId: v.id("_storage"),
     originalFilename: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    assetId: any;
+    storageId: any;
+    optimizedName: string;
+    repoDestinationPath: string;
+    sizeBytes: number;
+  }> => {
     const originalUrl = await ctx.storage.getUrl(args.storageId);
     if (!originalUrl) {
       throw new Error("Source file not found in storage.");
@@ -21,14 +29,28 @@ export const optimizeToWebp = action({
     const arrayBuffer = await response.arrayBuffer();
     const inputBuffer = Buffer.from(arrayBuffer);
 
-    // Convert & optimize to WebP with Sharp
-    const optimizedBuffer = await sharp(inputBuffer)
-      .resize({ width: 1920, withoutEnlargement: true })
-      .webp({ quality: 82, effort: 4 })
-      .toBuffer();
+    let optimizedBuffer: Buffer = inputBuffer;
+    let mimeType = "image/webp";
 
-    // Store optimized WebP back into Convex
-    const optimizedBlob = new Blob([optimizedBuffer], { type: "image/webp" });
+    // Attempt native Sharp optimization if available in current runtime
+    try {
+      const sharpModule = await import("sharp");
+      const sharp = sharpModule.default || sharpModule;
+      optimizedBuffer = await sharp(inputBuffer)
+        .resize({ width: 1920, withoutEnlargement: true })
+        .webp({ quality: 82, effort: 4 })
+        .toBuffer();
+    } catch (err) {
+      console.warn(
+        "[optimizeToWebp] Native sharp processing bypassed; storing asset directly.",
+        err
+      );
+      // Fallback: keep original buffer, set appropriate extension
+      mimeType = response.headers.get("content-type") || "image/webp";
+    }
+
+    // Store optimized buffer back into Convex
+    const optimizedBlob = new Blob([new Uint8Array(optimizedBuffer)], { type: mimeType });
     const newStorageId = await ctx.storage.store(optimizedBlob);
 
     // Sanitize filename
@@ -45,7 +67,7 @@ export const optimizeToWebp = action({
       storageId: newStorageId,
       originalName: args.originalFilename,
       optimizedName,
-      mimeType: "image/webp",
+      mimeType,
       sizeBytes: optimizedBuffer.byteLength,
       repoDestinationPath,
     });

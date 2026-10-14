@@ -25,7 +25,15 @@ export const createPullRequest = action({
     customTitle: v.optional(v.string()),
     customDescription: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    pullRequestUrl: string;
+    pullRequestNumber: number;
+    branchName: string;
+    modifiedFilesCount: number;
+  }> => {
     const token = process.env.GITHUB_TOKEN || process.env.GITHUB_ACCESS_TOKEN;
     if (!token) {
       throw new Error(
@@ -36,7 +44,7 @@ export const createPullRequest = action({
     const octokit = new Octokit({ auth: token });
 
     // 1. Fetch project details
-    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const project: any = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project) throw new Error("Project not found.");
 
     const owner = project.githubRepoOwner;
@@ -44,10 +52,10 @@ export const createPullRequest = action({
     const baseBranch = project.githubDefaultBranch || "main";
 
     // 2. Fetch staged changes
-    const allProjectChanges = await ctx.runQuery(api.stagedChanges.listByProject, {
+    const allProjectChanges: any[] = await ctx.runQuery(api.stagedChanges.listByProject, {
       projectId: args.projectId,
     });
-    const targetChanges = allProjectChanges.filter((c) =>
+    const targetChanges = allProjectChanges.filter((c: any) =>
       args.changeIds.includes(c._id)
     );
 
@@ -132,7 +140,7 @@ export const createPullRequest = action({
     // 6. Generate Pull Request description table
     const tableRows = targetChanges
       .map(
-        (c) =>
+        (c: any) =>
           `| \`${c.targetFile}\` | \`${c.contentKey}\` | \`${c.contentType}\` | ${
             c.originalValue.length > 50
               ? c.originalValue.slice(0, 47) + "..."
@@ -186,6 +194,7 @@ ${args.customDescription ? `\n### Reviewer Notes:\n${args.customDescription}` : 
       pullRequestUrl: pr.html_url,
       pullRequestNumber: pr.number,
       branchName,
+      modifiedFilesCount: changesByFile.size,
     };
   },
 });

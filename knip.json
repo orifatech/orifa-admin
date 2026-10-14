@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "convex/**/*.{ts,js}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "convex/**/*.{ts,js}"
+  ],
+  "ignoreDependencies": [
+    "clsx",
+    "tailwind-merge",
+    "tailwindcss",
+    "@img/sharp-libvips-linux-arm64",
+    "@img/sharp-linux-arm64",
+    "@tailwindcss/turbopack"
+  ]
+}

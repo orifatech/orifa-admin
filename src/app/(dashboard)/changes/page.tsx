@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { GitPullRequest, ArrowRight, ExternalLink, Globe } from "lucide-react";
+import { GitPullRequest, ArrowRight, Globe } from "lucide-react";
 
 export default function GlobalChangesPage() {
   const projects = useQuery(api.projects.list, {});

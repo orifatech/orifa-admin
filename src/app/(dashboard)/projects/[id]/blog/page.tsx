@@ -9,12 +9,10 @@ import {
   FileText,
   Plus,
   ArrowLeft,
-  Sparkles,
   CheckCircle2,
   GitPullRequest,
   Calendar,
   User,
-  Tag,
   Edit2,
 } from "lucide-react";
 

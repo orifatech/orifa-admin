@@ -127,7 +127,7 @@ export const publishChanges = action({
             currentContent = decoded;
           }
         }
-      } catch (err: any) {
+      } catch (_err: any) {
         // File may be new on target branch
       }
 

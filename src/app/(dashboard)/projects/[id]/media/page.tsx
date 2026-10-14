@@ -11,7 +11,6 @@ import {
   Copy,
   Check,
   ArrowLeft,
-  FileCode,
   ExternalLink,
   Sparkles,
 } from "lucide-react";

@@ -17,7 +17,6 @@ import {
   FileCode,
   Sparkles,
   GitBranch,
-  AlertCircle,
   ShieldCheck,
   Zap,
 } from "lucide-react";

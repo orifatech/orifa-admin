@@ -11,8 +11,6 @@ import {
   XCircle,
   ExternalLink,
   Trash2,
-  Calendar,
-  Building2,
 } from "lucide-react";
 
 export default function DomainsPage() {

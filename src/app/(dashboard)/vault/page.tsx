@@ -7,7 +7,6 @@ import {
   KeyRound,
   Plus,
   Eye,
-  EyeOff,
   Copy,
   Check,
   Building2,

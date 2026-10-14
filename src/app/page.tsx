@@ -2,10 +2,7 @@ import Link from "next/link";
 import {
   Globe,
   GitPullRequest,
-  Clock,
   KeyRound,
-  FileText,
-  CreditCard,
   ArrowRight,
   ShieldCheck,
   Sparkles,

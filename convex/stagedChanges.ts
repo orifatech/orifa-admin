@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getViewerOrThrow, assertProjectAccess } from "./lib/auth";
+import { assertProjectAccess } from "./lib/auth";
 
 export const listByProject = query({
   args: {

@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+echo "🔍 Running pre-commit quality gate..."
+
+echo "⚡ [1/3] Type-checking with TypeScript..."
+npm run typecheck
+
+echo "🧹 [2/3] Linting staged files..."
+npx lint-staged
+
+echo "🔎 [3/3] Checking for unused resources..."
+npm run check:unused
+
+echo "✅ Pre-commit quality gate passed!"

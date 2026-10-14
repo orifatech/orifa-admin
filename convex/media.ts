@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertProjectAccess, getViewerOrThrow } from "./lib/auth";
+import { assertProjectAccess } from "./lib/auth";
 
 export const generateUploadUrl = mutation({
   args: { projectId: v.id("projects") },

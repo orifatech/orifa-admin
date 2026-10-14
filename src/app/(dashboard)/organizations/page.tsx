@@ -7,9 +7,7 @@ import {
   Building2,
   Plus,
   Mail,
-  Globe,
   Calendar,
-  Sparkles,
 } from "lucide-react";
 
 export default function OrganizationsPage() {

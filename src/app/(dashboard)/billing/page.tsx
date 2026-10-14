@@ -6,10 +6,7 @@ import { api } from "@convex/_generated/api";
 import {
   CreditCard,
   Plus,
-  DollarSign,
   TrendingUp,
-  AlertCircle,
-  Calendar,
   Building2,
   Trash2,
 } from "lucide-react";

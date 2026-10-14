@@ -7,10 +7,7 @@ import {
   Mail,
   Plus,
   Building2,
-  Calendar,
   Trash2,
-  Users,
-  ShieldCheck,
 } from "lucide-react";
 
 export default function LicensesPage() {

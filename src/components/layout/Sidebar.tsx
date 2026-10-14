@@ -13,7 +13,6 @@ import {
   KeyRound,
   Building2,
   LogOut,
-  Layers,
   ChevronDown,
 } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -37,7 +36,6 @@ const navigationItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const viewer = useQuery(api.users.viewer);
-  const organizations = useQuery(api.organizations.list);
   const { signOut } = useAuthActions();
 
   return (

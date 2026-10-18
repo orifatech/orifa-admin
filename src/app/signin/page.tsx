@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import { Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function SignInPage() {
   const { signIn } = useAuthActions();
+  const { isAuthenticated, isLoading } = useConvexAuth();
   const router = useRouter();
 
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
@@ -16,6 +18,12 @@ export default function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/projects");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -23,8 +31,9 @@ export default function SignInPage() {
 
     try {
       const payload: any = { email, password, flow };
-      if (flow === "signUp" && name) {
-        payload.name = name;
+      if (flow === "signUp") {
+        payload.name = name || "Admin";
+        payload.role = "super_admin";
       }
 
       await signIn("password", payload);

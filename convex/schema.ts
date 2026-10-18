@@ -28,7 +28,9 @@ export default defineSchema({
     
     // Orifa Tenancy Fields
     organizationId: v.optional(v.id("organizations")), // null for Orifa super_admin
-    role: v.union(v.literal("super_admin"), v.literal("client_admin"), v.literal("client_editor")),
+    role: v.optional(
+      v.union(v.literal("super_admin"), v.literal("client_admin"), v.literal("client_editor"))
+    ),
     createdAt: v.optional(v.number()),
   })
     .index("email", ["email"])

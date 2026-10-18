@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertProjectAccess } from "./lib/auth";
+import { assertProjectAccess, getViewer } from "./lib/auth";
 
 export const generateUploadUrl = mutation({
   args: { projectId: v.id("projects") },
@@ -42,6 +42,9 @@ export const registerAsset = mutation({
 export const listByProject = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
+
     await assertProjectAccess(ctx, args.projectId);
 
     const assets = await ctx.db

@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getViewer, assertSuperAdmin, getViewerOrThrow } from "./lib/auth";
+import { getViewer, assertSuperAdmin } from "./lib/auth";
 
 export const viewer = query({
   args: {},
@@ -23,7 +23,8 @@ export const viewer = query({
 export const listUsers = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
 
     if (viewer.role === "super_admin") {
       if (args.organizationId) {

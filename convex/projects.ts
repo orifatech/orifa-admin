@@ -1,11 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getViewerOrThrow, assertProjectAccess, assertSuperAdmin } from "./lib/auth";
+import { getViewer, assertProjectAccess, assertSuperAdmin } from "./lib/auth";
 
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
 
     const targetOrgId = args.organizationId;
     if (viewer.role === "super_admin") {
@@ -31,6 +32,9 @@ export const list = query({
 export const get = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx);
+    if (!viewer) return null;
+
     const { project } = await assertProjectAccess(ctx, args.projectId);
     const org = await ctx.db.get(project.organizationId);
     return {

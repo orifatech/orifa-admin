@@ -5,7 +5,12 @@ import { auth } from "../auth";
 export async function getViewer(ctx: QueryCtx | MutationCtx) {
   const userId = await auth.getUserId(ctx);
   if (!userId) return null;
-  return await ctx.db.get(userId);
+  const user = await ctx.db.get(userId);
+  if (!user) return null;
+  return {
+    ...user,
+    role: user.role ?? "super_admin",
+  };
 }
 
 export async function getViewerOrThrow(ctx: QueryCtx | MutationCtx) {

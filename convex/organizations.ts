@@ -1,11 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getViewerOrThrow, assertSuperAdmin } from "./lib/auth";
+import { getViewer, assertSuperAdmin } from "./lib/auth";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
 
     if (viewer.role === "super_admin") {
       return await ctx.db.query("organizations").collect();
@@ -23,7 +24,8 @@ export const list = query({
 export const get = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return null;
 
     if (viewer.role !== "super_admin" && viewer.organizationId !== args.organizationId) {
       throw new Error("Forbidden: You do not have access to this organization.");

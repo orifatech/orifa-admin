@@ -1,11 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertSuperAdmin, getViewerOrThrow } from "./lib/auth";
+import { assertSuperAdmin, getViewer } from "./lib/auth";
 
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
 
     let licenses;
     const targetOrgId = args.organizationId;

@@ -1,11 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertSuperAdmin, getViewerOrThrow } from "./lib/auth";
+import { assertSuperAdmin, getViewer } from "./lib/auth";
 
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
 
     let subs;
     const targetOrgId = args.organizationId;
@@ -42,7 +43,13 @@ export const list = query({
 export const getMRR = query({
   args: {},
   handler: async (ctx) => {
-    await assertSuperAdmin(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer || viewer.role !== "super_admin") {
+      return {
+        activeSubscribersCount: 0,
+        totalsByCurrency: {},
+      };
+    }
 
     const subs = await ctx.db.query("subscriptions").collect();
     const activeSubs = subs.filter((s) => s.status === "active");

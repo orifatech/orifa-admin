@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertProjectAccess } from "./lib/auth";
+import { assertProjectAccess, getViewer } from "./lib/auth";
 
 export const listByProject = query({
   args: {
@@ -15,6 +15,9 @@ export const listByProject = query({
     ),
   },
   handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
+
     await assertProjectAccess(ctx, args.projectId);
 
     if (args.status) {
@@ -38,8 +41,11 @@ export const listByProject = query({
 export const get = query({
   args: { postId: v.id("blogPosts") },
   handler: async (ctx, args) => {
+    const viewer = await getViewer(ctx);
+    if (!viewer) return null;
+
     const post = await ctx.db.get(args.postId);
-    if (!post) throw new Error("Blog post not found.");
+    if (!post) return null;
     await assertProjectAccess(ctx, post.projectId);
     return post;
   },

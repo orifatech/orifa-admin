@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertSuperAdmin, getViewerOrThrow } from "./lib/auth";
+import { getViewer, getViewerOrThrow } from "./lib/auth";
 
 async function getMasterCryptoKey(): Promise<CryptoKey> {
   const hex = process.env.VAULT_MASTER_KEY;
@@ -42,7 +42,8 @@ function base64ToUint8Array(base64: string): Uint8Array {
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer) return [];
 
     let creds;
     const targetOrgId = args.organizationId;
@@ -87,7 +88,8 @@ export const list = query({
 export const getAuditLogs = query({
   args: { credentialId: v.id("vaultCredentials") },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const viewer = await getViewer(ctx);
+    if (!viewer || viewer.role !== "super_admin") return [];
 
     const logs = await ctx.db
       .query("vaultAuditLogs")

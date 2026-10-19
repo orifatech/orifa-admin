@@ -12,23 +12,20 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@convex/*": ["./convex/*"]
+      "@orifa/backend": ["./packages/backend"],
+      "@orifa/backend/*": ["./packages/backend/*"],
+      "@convex/*": ["./packages/backend/convex/*"],
+      "@orifa/ui": ["./packages/ui"],
+      "@orifa/ui/*": ["./packages/ui/*"],
+      "@/*": ["./apps/agency/src/*"]
     }
   },
   "include": [
-    "next-env.d.ts",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx"
   ],
-  "exclude": ["node_modules", "convex"]
+  "exclude": ["node_modules", "**/dist", "**/.next"]
 }

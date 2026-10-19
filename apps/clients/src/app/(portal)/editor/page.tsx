@@ -34,7 +34,7 @@ export default function VisualEditorPage() {
 
   const projects = useQuery(api.projects.list, orgId ? { organizationId: orgId } : {}) || [];
   const subscriptions = useQuery(api.subscriptions.list, orgId ? { organizationId: orgId } : {}) || [];
-  const activeSubscription = subscriptions.find((s) => s.status === "active");
+  const activeSubscription = subscriptions.find((s: any) => s.status === "active");
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [deviceViewport, setDeviceViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
@@ -50,7 +50,7 @@ export default function VisualEditorPage() {
   const [uploadProgressText, setUploadProgressText] = useState<string>("");
 
   const activeProjectId = selectedProjectId || (projects.length > 0 ? (projects[0]._id as string) : "");
-  const activeProject = projects.find((p) => p._id === activeProjectId);
+  const activeProject = projects.find((p: any) => p._id === activeProjectId);
 
   const stagedChanges = useQuery(
     api.stagedChanges.listByProject,
@@ -121,7 +121,7 @@ export default function VisualEditorPage() {
   };
 
   const handleBatchSubmit = async () => {
-    const drafts = stagedChanges.filter((c) => c.status === "draft");
+    const drafts = stagedChanges.filter((c: any) => c.status === "draft");
     if (drafts.length === 0) return;
 
     try {
@@ -257,7 +257,7 @@ export default function VisualEditorPage() {
     </html>
   `;
 
-  const pendingCount = stagedChanges.filter((c) => c.status === "draft" || c.status === "pending_review").length;
+  const pendingCount = stagedChanges.filter((c: any) => c.status === "draft" || c.status === "pending_review").length;
 
   return (
     <div className="flex flex-col h-[calc(100vh-6.5rem)] font-sans">
@@ -280,7 +280,7 @@ export default function VisualEditorPage() {
               onChange={(e) => setSelectedProjectId(e.target.value)}
               className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-900 focus:outline-hidden focus:border-emerald-600"
             >
-              {projects.map((p) => (
+              {projects.map((p: any) => (
                 <option key={p._id} value={p._id}>
                   {p.name}
                 </option>

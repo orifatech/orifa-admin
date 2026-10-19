@@ -91,6 +91,24 @@ export const add = mutation({
     const admin = await assertSuperAdmin(ctx);
     const subId = await ctx.db.insert("subscriptions", args);
 
+    // Auto-generate initial retainer invoice
+    const invoiceYear = new Date().getFullYear();
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const invoiceNumber = `INV-${invoiceYear}-${randomSuffix}`;
+    await ctx.db.insert("invoices", {
+      organizationId: args.organizationId,
+      subscriptionId: subId,
+      invoiceNumber,
+      description: `${args.planName} (${args.billingCycle === "monthly" ? "Monthly Retainer" : args.billingCycle})`,
+      amount: args.monthlyFee,
+      amountInMinor: Math.round(args.monthlyFee * 100),
+      currency: args.currency,
+      status: "pending",
+      dueDate: args.nextBillingDate,
+      paymentMethod: "Paystack",
+      createdAt: Date.now(),
+    });
+
     await logSecurityAudit(ctx, {
       tenantId: args.organizationId,
       actorId: admin._id,
@@ -102,6 +120,7 @@ export const add = mutation({
         planName: args.planName,
         monthlyFee: args.monthlyFee,
         currency: args.currency,
+        initialInvoiceNumber: invoiceNumber,
       },
     });
 

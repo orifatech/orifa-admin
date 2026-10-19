@@ -21,6 +21,9 @@ export default defineSchema({
     primaryColor: v.optional(v.string()), // Hex color e.g. #006e2b
     secondaryColor: v.optional(v.string()), // Hex color e.g. #16a34a (max 2 colors)
     theme: v.optional(v.string()), // default "white"
+    country: v.optional(v.string()), // ISO-2: "NG", "GH", "KE", "ZA", "US", etc.
+    currency: v.optional(v.string()), // "NGN", "GHS", "KES", "ZAR", "USD"
+    paystackCustomerCode: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_slug", ["slug"]),
 
@@ -182,9 +185,37 @@ export default defineSchema({
     billingDayOfMonth: v.number(),  // 1 to 31
     nextBillingDate: v.number(),
     status: v.union(v.literal("active"), v.literal("overdue"), v.literal("cancelled"), v.literal("not_applicable")),
-    paymentMethod: v.string(),      // e.g. "Wire Transfer", "Stripe", "Paystack"
+    paymentMethod: v.string(),      // e.g. "Paystack", "Card", "Bank Transfer"
+    paystackPlanCode: v.optional(v.string()),
+    paystackSubscriptionCode: v.optional(v.string()),
+    paystackEmailToken: v.optional(v.string()),
     notes: v.optional(v.string()),
   }).index("by_org", ["organizationId"]),
+
+  // ==========================================
+  // 8. CLIENT INVOICES & PAYSTACK TRANSACTIONS
+  // ==========================================
+  invoices: defineTable({
+    organizationId: v.id("organizations"),
+    subscriptionId: v.optional(v.id("subscriptions")),
+    invoiceNumber: v.string(), // e.g. "INV-2026-001"
+    description: v.string(),
+    amount: v.number(), // Amount in base unit (e.g. 50000 NGN or 350 USD)
+    amountInMinor: v.number(), // Minor unit for gateway (e.g. 5000000 kobo or 35000 cents)
+    currency: v.string(), // "NGN", "GHS", "KES", "ZAR", "USD"
+    status: v.union(v.literal("pending"), v.literal("paid"), v.literal("failed"), v.literal("refunded")),
+    dueDate: v.number(),
+    paidAt: v.optional(v.number()),
+    paystackReference: v.optional(v.string()),
+    paystackAccessCode: v.optional(v.string()),
+    paystackAuthorizationUrl: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_reference", ["paystackReference"])
+    .index("by_status", ["status"]),
 
   // ==========================================
   // 8. AGENCY OPS: EMAIL WORKSPACE LICENSES

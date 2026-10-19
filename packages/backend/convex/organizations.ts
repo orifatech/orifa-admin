@@ -49,6 +49,9 @@ export const create = mutation({
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
     theme: v.optional(v.string()),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    paystackCustomerCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const admin = await assertSuperAdmin(ctx);
@@ -73,6 +76,9 @@ export const create = mutation({
       primaryColor: args.primaryColor ?? "#006e2b",
       secondaryColor: args.secondaryColor ?? "#16a34a",
       theme: args.theme ?? "white",
+      country: args.country ?? "NG",
+      currency: args.currency ?? "NGN",
+      paystackCustomerCode: args.paystackCustomerCode,
       createdAt: Date.now(),
     });
 
@@ -109,6 +115,9 @@ export const update = mutation({
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
     theme: v.optional(v.string()),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    paystackCustomerCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const admin = await assertSuperAdmin(ctx);
@@ -136,3 +145,38 @@ export const update = mutation({
     });
   },
 });
+
+export const updateBillingCountry = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    country: v.string(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, viewer } = await assertTenantContext(ctx, args.organizationId, {
+      resourceType: "organizations",
+      resourceId: args.organizationId as string,
+    });
+
+    if (!organizationId) throw new Error("Unauthorized");
+
+    await ctx.db.patch(organizationId, {
+      country: args.country,
+      currency: args.currency,
+    });
+
+    await logSecurityAudit(ctx, {
+      tenantId: organizationId,
+      actorId: viewer._id,
+      action: "billing_country_updated",
+      resourceType: "organizations",
+      resourceId: organizationId as string,
+      severity: "info",
+      details: {
+        country: args.country,
+        currency: args.currency,
+      },
+    });
+  },
+});
+

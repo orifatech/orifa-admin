@@ -23,7 +23,7 @@ export default function ClientChangesPage() {
   const orgId = viewer?.organizationId;
   const projects = useQuery(api.projects.list, orgId ? { organizationId: orgId } : {}) || [];
   const subscriptions = useQuery(api.subscriptions.list, orgId ? { organizationId: orgId } : {}) || [];
-  const activeSubscription = subscriptions.find((s) => s.status === "active");
+  const activeSubscription = subscriptions.find((s: any) => s.status === "active");
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "pending_review" | "pr_created" | "merged">("all");
@@ -31,7 +31,7 @@ export default function ClientChangesPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const activeProjectId = selectedProjectId || (projects.length > 0 ? (projects[0]._id as string) : "");
-  const activeProject = projects.find((p) => p._id === activeProjectId);
+  const activeProject = projects.find((p: any) => p._id === activeProjectId);
 
   const stagedChanges = useQuery(
     api.stagedChanges.listByProject,
@@ -41,12 +41,12 @@ export default function ClientChangesPage() {
   const discardMutation = useMutation(api.stagedChanges.deleteChange);
   const updateStatusMutation = useMutation(api.stagedChanges.updateStatus);
 
-  const filteredChanges = stagedChanges.filter((ch) => {
+  const filteredChanges = stagedChanges.filter((ch: any) => {
     if (filterStatus === "all") return true;
     return ch.status === filterStatus;
   });
 
-  const draftChanges = stagedChanges.filter((ch) => ch.status === "draft");
+  const draftChanges = stagedChanges.filter((ch: any) => ch.status === "draft");
 
   const handleBatchSubmit = async () => {
     if (draftChanges.length === 0) return;
@@ -148,7 +148,7 @@ export default function ClientChangesPage() {
                 onChange={(e) => setSelectedProjectId(e.target.value)}
                 className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-900 focus:outline-hidden focus:border-emerald-600"
               >
-                {projects.map((p) => (
+                {projects.map((p: any) => (
                   <option key={p._id} value={p._id}>
                     {p.name}
                   </option>
@@ -221,7 +221,7 @@ export default function ClientChangesPage() {
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
           }`}
         >
-          Drafts ({stagedChanges.filter((c) => c.status === "draft").length})
+          Drafts ({stagedChanges.filter((c: any) => c.status === "draft").length})
         </button>
         <button
           onClick={() => setFilterStatus("pending_review")}
@@ -231,7 +231,7 @@ export default function ClientChangesPage() {
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
           }`}
         >
-          Under Review ({stagedChanges.filter((c) => c.status === "pending_review").length})
+          Under Review ({stagedChanges.filter((c: any) => c.status === "pending_review").length})
         </button>
         <button
           onClick={() => setFilterStatus("pr_created")}
@@ -241,7 +241,7 @@ export default function ClientChangesPage() {
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
           }`}
         >
-          Pull Requests ({stagedChanges.filter((c) => c.status === "pr_created").length})
+          Pull Requests ({stagedChanges.filter((c: any) => c.status === "pr_created").length})
         </button>
         <button
           onClick={() => setFilterStatus("merged")}
@@ -251,7 +251,7 @@ export default function ClientChangesPage() {
               : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
           }`}
         >
-          Merged ({stagedChanges.filter((c) => c.status === "merged").length})
+          Merged ({stagedChanges.filter((c: any) => c.status === "merged").length})
         </button>
       </div>
 
@@ -275,7 +275,7 @@ export default function ClientChangesPage() {
         </div>
       ) : (
         <div className="bg-white border border-gray-200/80 rounded-xl shadow-xs overflow-hidden divide-y divide-gray-100">
-          {filteredChanges.map((change) => (
+          {filteredChanges.map((change: any) => (
             <div key={change._id} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
               <div className="space-y-2 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

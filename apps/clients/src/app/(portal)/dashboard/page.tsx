@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
   LifeBuoy,
 } from "lucide-react";
+import { HelpResourcesSection } from "../../../components/HelpResourcesSection";
 
 export default function ClientDashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -29,7 +30,7 @@ export default function ClientDashboardPage() {
 
   const organization = viewer?.organization;
   const primaryColor = organization?.primaryColor || "#006e2b";
-  const activeSubscription = subscriptions.find((s) => s.status === "active");
+  const activeSubscription = subscriptions.find((s: any) => s.status === "active");
   const pendingChanges = stagedChanges.filter(
     (c: any) => c.status === "pending_review" || c.status === "draft"
   );
@@ -358,6 +359,9 @@ export default function ClientDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 4. HELP RESOURCES & VIDEO TUTORIALS */}
+      <HelpResourcesSection primaryColor={primaryColor} />
     </div>
   );
 }

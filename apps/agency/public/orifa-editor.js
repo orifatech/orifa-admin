@@ -2,8 +2,8 @@
  * Orifa In-Place Visual Content Editor (Client-side Snippet)
  * (c) Orifa Technologies
  * 
- * Usage on Client Website (Astro, Next.js, React):
- * <script src="https://admin.orifatech.com/orifa-editor.js" data-site="PROJECT_ID" data-token="EDITOR_TOKEN" defer></script>
+ * Usage on Client Website (Astro, Next.js, React, HTML):
+ * <script src="https://agency.orifatech.com/orifa-editor.js" data-site="PROJECT_ID" data-token="EDITOR_TOKEN" defer></script>
  */
 
 (function () {
@@ -18,8 +18,9 @@
   const editorToken = currentScript?.getAttribute('data-token');
   const apiEndpoint = currentScript?.getAttribute('data-api') || window.__ORIFA_API_ENDPOINT__ || '';
 
-  // Determine if running inside the Orifa Admin Preview Iframe
+  // Determine if running inside the Orifa Admin/Client Preview Iframe
   const isEmbeddedInIframe = window.self !== window.top;
+  window.__ORIFA_EDIT_MODE__ = isEmbeddedInIframe;
 
   console.log('[Orifa Editor] Initializing visual editor runtime...', {
     projectId,
@@ -30,26 +31,26 @@
   const styleEl = document.createElement('style');
   styleEl.textContent = `
     .orifa-editable-highlight {
-      outline: 2px dashed #3b82f6 !important;
+      outline: 2px dashed #006e2b !important;
       outline-offset: 3px !important;
       cursor: pointer !important;
       position: relative !important;
       transition: outline-color 0.2s ease, background-color 0.2s ease !important;
     }
     .orifa-editable-highlight:hover {
-      outline-color: #2563eb !important;
-      background-color: rgba(59, 130, 246, 0.08) !important;
+      outline-color: #00521e !important;
+      background-color: rgba(0, 110, 43, 0.08) !important;
     }
     .orifa-editable-editing {
-      outline: 2px solid #10b981 !important;
+      outline: 2px solid #006e2b !important;
       outline-offset: 3px !important;
-      background-color: rgba(16, 185, 129, 0.05) !important;
+      background-color: rgba(0, 110, 43, 0.05) !important;
     }
     #orifa-floating-toolbar {
       position: fixed;
       z-index: 999999;
-      background: #18181b;
-      color: #fafafa;
+      background: #111827;
+      color: #f9fafb;
       padding: 6px 10px;
       border-radius: 8px;
       box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.2);
@@ -57,12 +58,12 @@
       align-items: center;
       gap: 6px;
       font-family: system-ui, -apple-system, sans-serif;
-      font-size: 13px;
-      border: 1px solid #27272a;
+      font-size: 12px;
+      border: 1px solid #374151;
     }
     #orifa-floating-toolbar button {
-      background: #27272a;
-      color: #f4f4f5;
+      background: #374151;
+      color: #f3f4f6;
       border: none;
       border-radius: 4px;
       padding: 4px 8px;
@@ -72,31 +73,33 @@
       align-items: center;
       gap: 4px;
       transition: background 0.15s ease;
+      font-size: 11px;
     }
     #orifa-floating-toolbar button:hover {
-      background: #3f3f46;
+      background: #4b5563;
     }
     #orifa-floating-toolbar button.orifa-btn-save {
-      background: #059669;
+      background: #006e2b;
       color: white;
     }
     #orifa-floating-toolbar button.orifa-btn-save:hover {
-      background: #047857;
+      background: #00521e;
     }
     #orifa-floating-toolbar button.orifa-btn-cancel {
       background: transparent;
-      color: #a1a1aa;
+      color: #9ca3af;
     }
     #orifa-floating-toolbar button.orifa-btn-cancel:hover {
-      background: #27272a;
-      color: #f4f4f5;
+      background: #374151;
+      color: #f3f4f6;
     }
     #orifa-floating-toolbar .orifa-badge {
       font-size: 11px;
-      color: #a1a1aa;
+      color: #9ca3af;
       padding: 2px 6px;
-      border-right: 1px solid #3f3f46;
+      border-right: 1px solid #374151;
       margin-right: 4px;
+      font-family: monospace;
     }
   `;
   document.head.appendChild(styleEl);
@@ -126,7 +129,7 @@
   // Parse data-cms attribute format:
   // Format 1: "src/content/home.json#hero.title"
   // Format 2: "home.json:hero.title"
-  // Format 3: "hero.title" (defaults to contentRoot)
+  // Format 3: "hero.title" (defaults to content.json)
   function parseCmsTarget(attrValue) {
     if (!attrValue) return { targetFile: 'content.json', contentKey: 'unknown' };
     if (attrValue.includes('#')) {
@@ -149,7 +152,6 @@
       el.classList.add('orifa-editable-highlight');
 
       el.addEventListener('click', (e) => {
-        // Only trigger edit mode if shiftKey is held OR embedded in iframe
         if (isEmbeddedInIframe || e.altKey || e.metaKey || window.__ORIFA_EDIT_MODE__) {
           e.preventDefault();
           e.stopPropagation();
@@ -178,7 +180,7 @@
     const { targetFile, contentKey } = parseCmsTarget(el.getAttribute('data-cms'));
     originalTargetFile = targetFile;
     originalContentKey = contentKey;
-    originalContentType = el.tagName === 'IMG' ? 'image' : 'text';
+    originalContentType = el.tagName === 'IMG' ? 'image' : (el.tagName === 'A' ? 'link' : 'text');
 
     toolbarTargetLabel.textContent = contentKey;
     el.classList.add('orifa-editable-editing');
@@ -257,7 +259,6 @@
     console.log('[Orifa Editor] Staging change:', change);
 
     if (isEmbeddedInIframe) {
-      // Send message to parent Orifa Admin Dashboard
       window.parent.postMessage(
         {
           type: 'ORIFA_STAGE_CHANGE',
@@ -297,7 +298,11 @@
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'ORIFA_TOGGLE_EDIT_MODE') {
       window.__ORIFA_EDIT_MODE__ = !!event.data.enabled;
-      console.log('[Orifa Editor] Edit mode:', window.__ORIFA_EDIT_MODE__);
+      const highlights = document.querySelectorAll('.orifa-editable-highlight');
+      highlights.forEach((el) => {
+        el.style.outline = window.__ORIFA_EDIT_MODE__ ? '2px dashed #006e2b' : 'none';
+      });
+      console.log('[Orifa Editor] Edit mode toggled:', window.__ORIFA_EDIT_MODE__);
     }
   });
 

@@ -73,20 +73,20 @@ export default function BillingPage() {
   return (
     <div className="p-8 space-y-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2.5">
             <CreditCard className="h-6 w-6 text-blue-500" />
             Client Retainers &amp; Monthly Revenue
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
             Track website maintenance retainers, recurring billing schedules, and agency MRR.
           </p>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-blue-600/20"
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-blue-600/20 cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           Add Retainer
@@ -95,26 +95,26 @@ export default function BillingPage() {
 
       {/* MRR Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-xl bg-gradient-to-br from-blue-950/40 to-indigo-950/20 border border-blue-800/40 space-y-1">
-          <div className="text-xs font-medium text-blue-300 flex items-center gap-1.5">
-            <TrendingUp className="h-4 w-4 text-blue-400" /> Total Agency MRR
+        <div className="p-5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/40 space-y-1 shadow-xs">
+          <div className="text-xs font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+            <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" /> Total Agency MRR
           </div>
-          <div className="text-3xl font-extrabold text-zinc-100 tracking-tight">
+          <div className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight">
             ${totalUSD.toLocaleString("en-US", { minimumFractionDigits: 0 })}
-            <span className="text-xs font-normal text-zinc-400 ml-1">/ month</span>
+            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400 ml-1">/ month</span>
           </div>
         </div>
 
-        <div className="p-5 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
-          <div className="text-xs font-medium text-zinc-400">Active Retainers</div>
-          <div className="text-3xl font-bold text-zinc-100 tracking-tight">
+        <div className="p-5 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-1 shadow-xs">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Active Retainers</div>
+          <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
             {mrrData?.activeSubscribersCount || 0}
           </div>
         </div>
 
-        <div className="p-5 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-1">
-          <div className="text-xs font-medium text-zinc-400">Past Due / Overdue</div>
-          <div className={`text-3xl font-bold tracking-tight ${overdueCount > 0 ? "text-rose-400" : "text-emerald-400"}`}>
+        <div className="p-5 rounded-xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-1 shadow-xs">
+          <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Past Due / Overdue</div>
+          <div className={`text-3xl font-bold tracking-tight ${overdueCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
             {overdueCount}
           </div>
         </div>
@@ -122,26 +122,26 @@ export default function BillingPage() {
 
       {/* Subscriptions Table */}
       {subscriptions === undefined ? (
-        <div className="h-64 bg-zinc-900/40 border border-zinc-800 rounded-xl animate-pulse" />
+        <div className="h-64 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl animate-pulse" />
       ) : subscriptions.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/20 p-8">
-          <CreditCard className="mx-auto h-12 w-12 text-zinc-500 mb-3" />
-          <h3 className="text-base font-semibold text-zinc-200">No retainers configured</h3>
-          <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1 mb-4">
+        <div className="text-center py-16 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900/20 p-8 shadow-xs">
+          <CreditCard className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500 mb-3" />
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-200">No retainers configured</h3>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-sm mx-auto mt-1 mb-4">
             Record recurring maintenance retainers to forecast cashflow and monitor payment statuses.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Add First Retainer
           </button>
         </div>
       ) : (
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-xs text-zinc-300">
-            <thead className="bg-zinc-950/60 text-zinc-400 uppercase tracking-wider text-[10px] border-b border-zinc-800">
+        <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
+          <table className="w-full text-left text-xs text-zinc-700 dark:text-zinc-300">
+            <thead className="bg-zinc-50 dark:bg-zinc-950/60 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider text-[10px] border-b border-zinc-200 dark:border-zinc-800">
               <tr>
                 <th className="px-5 py-3 font-semibold">Client Org</th>
                 <th className="px-5 py-3 font-semibold">Plan Name</th>
@@ -152,29 +152,29 @@ export default function BillingPage() {
                 <th className="px-5 py-3 text-right font-semibold">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/80">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80">
               {subscriptions.map((sub) => (
-                <tr key={sub._id} className="hover:bg-zinc-850/50 transition-colors">
-                  <td className="px-5 py-3.5 font-medium text-zinc-100 flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-blue-400 shrink-0" />
+                <tr key={sub._id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors">
+                  <td className="px-5 py-3.5 font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-blue-500 shrink-0" />
                     <span>{sub.organizationName}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-300">{sub.planName}</td>
-                  <td className="px-5 py-3.5 font-semibold text-emerald-400 font-mono">
+                  <td className="px-5 py-3.5 text-zinc-700 dark:text-zinc-300">{sub.planName}</td>
+                  <td className="px-5 py-3.5 font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
                     ${sub.monthlyFee} <span className="text-[10px] text-zinc-500">{sub.currency}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-400">
+                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400">
                     Day {sub.billingDayOfMonth} of month
                   </td>
-                  <td className="px-5 py-3.5 text-zinc-400 text-[11px]">{sub.paymentMethod}</td>
+                  <td className="px-5 py-3.5 text-zinc-600 dark:text-zinc-400 text-[11px]">{sub.paymentMethod}</td>
                   <td className="px-5 py-3.5">
                     <span
                       className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${
                         sub.status === "active"
-                          ? "bg-emerald-950/60 text-emerald-400 border-emerald-800/40"
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40"
                           : sub.status === "overdue"
-                          ? "bg-rose-950/60 text-rose-400 border-rose-800/40"
-                          : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                          ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/40"
+                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
                       }`}
                     >
                       {sub.status}
@@ -183,7 +183,7 @@ export default function BillingPage() {
                   <td className="px-5 py-3.5 text-right">
                     <button
                       onClick={() => handleDelete(sub._id, sub.organizationName)}
-                      className="text-zinc-500 hover:text-rose-400 p-1 rounded transition-colors"
+                      className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-1 rounded transition-colors cursor-pointer"
                       title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -198,16 +198,16 @@ export default function BillingPage() {
 
       {/* Add Subscription Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-blue-400" />
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-blue-500" />
                 Add Client Retainer
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm cursor-pointer"
               >
                 ✕
               </button>
@@ -215,14 +215,14 @@ export default function BillingPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Client Organization *
                 </label>
                 <select
                   required
                   value={formData.organizationId}
                   onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                 >
                   <option value="">Select client...</option>
                   {organizations?.map((org) => (
@@ -234,7 +234,7 @@ export default function BillingPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Plan Description *
                 </label>
                 <input
@@ -242,13 +242,13 @@ export default function BillingPage() {
                   required
                   value={formData.planName}
                   onChange={(e) => setFormData({ ...formData, planName: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Monthly Fee ($) *
                   </label>
                   <input
@@ -257,11 +257,11 @@ export default function BillingPage() {
                     min={0}
                     value={formData.monthlyFee}
                     onChange={(e) => setFormData({ ...formData, monthlyFee: Number(e.target.value) })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 font-mono focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                     Billing Day (1-28)
                   </label>
                   <input
@@ -270,35 +270,35 @@ export default function BillingPage() {
                     max={28}
                     value={formData.billingDayOfMonth}
                     onChange={(e) => setFormData({ ...formData, billingDayOfMonth: Number(e.target.value) })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 font-mono focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Payment Method
                 </label>
                 <input
                   type="text"
                   value={formData.paymentMethod}
                   onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
                 >
                   {isSubmitting ? "Saving..." : "Save Retainer"}
                 </button>

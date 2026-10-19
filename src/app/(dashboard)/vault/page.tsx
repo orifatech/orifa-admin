@@ -129,20 +129,20 @@ export default function VaultPage() {
   return (
     <div className="p-8 space-y-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2.5">
             <KeyRound className="h-6 w-6 text-blue-500" />
             Encrypted Client Credential Vault
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
             Store cPanel, DNS registrar, hosting, and API keys encrypted with zero-knowledge AES-256-GCM.
           </p>
         </div>
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-blue-600/20"
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-blue-600/20 cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           Add Credential
@@ -157,10 +157,10 @@ export default function VaultPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors capitalize whitespace-nowrap ${
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors capitalize whitespace-nowrap cursor-pointer ${
                   selectedCategory === cat
                     ? "bg-blue-600 text-white"
-                    : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800"
+                    : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
                 }`}
               >
                 {cat.replace("_", " ")}
@@ -174,7 +174,7 @@ export default function VaultPage() {
           placeholder="Search credentials or clients..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 w-full sm:w-64"
+          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-blue-500 w-full sm:w-64"
         />
       </div>
 
@@ -182,19 +182,19 @@ export default function VaultPage() {
       {filtered === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-44 bg-zinc-900/40 border border-zinc-800 rounded-xl animate-pulse" />
+            <div key={i} className="h-44 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/20 p-8">
-          <KeyRound className="mx-auto h-12 w-12 text-zinc-500 mb-3" />
-          <h3 className="text-base font-semibold text-zinc-200">No credentials found</h3>
-          <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1 mb-4">
+        <div className="text-center py-16 border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900/20 p-8 shadow-xs">
+          <KeyRound className="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500 mb-3" />
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-200">No credentials found</h3>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-sm mx-auto mt-1 mb-4">
             Store passwords, cPanel access, or API secrets safely with hardware-grade AES-256-GCM encryption.
           </p>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Add First Credential
@@ -205,27 +205,27 @@ export default function VaultPage() {
           {filtered.map((cred) => (
             <div
               key={cred._id}
-              className="bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 rounded-xl p-5 flex flex-col justify-between transition-all space-y-4"
+              className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-xl p-5 flex flex-col justify-between transition-all space-y-4 shadow-xs"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-zinc-100 text-base truncate">{cred.title}</h3>
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-0.5">
-                      <Building2 className="h-3 w-3 text-zinc-500" />
+                    <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base truncate">{cred.title}</h3>
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                      <Building2 className="h-3 w-3 text-zinc-400 dark:text-zinc-500" />
                       <span className="truncate">{cred.organizationName}</span>
                     </div>
                   </div>
-                  <span className="shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded border bg-zinc-800 text-zinc-300 border-zinc-700">
+                  <span className="shrink-0 text-[10px] font-semibold uppercase px-2 py-0.5 rounded border bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700">
                     {cred.category.replace("_", " ")}
                   </span>
                 </div>
 
                 {/* Username & URL */}
-                <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-lg p-3 space-y-1.5 text-xs">
+                <div className="bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800/80 rounded-lg p-3 space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-zinc-500 text-[11px]">Username</span>
-                    <span className="font-mono text-zinc-200 font-medium">{cred.loginUsername}</span>
+                    <span className="font-mono text-zinc-800 dark:text-zinc-200 font-medium">{cred.loginUsername}</span>
                   </div>
                   {cred.accessUrl && (
                     <div className="flex items-center justify-between">
@@ -234,7 +234,7 @@ export default function VaultPage() {
                         href={cred.accessUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-400 hover:underline flex items-center gap-1 truncate max-w-[150px]"
+                        className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 truncate max-w-[150px]"
                       >
                         <span className="truncate">{cred.accessUrl.replace(/^https?:\/\//, "")}</span>
                         <ExternalLink className="h-2.5 w-2.5 shrink-0" />
@@ -245,10 +245,10 @@ export default function VaultPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+              <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between text-xs">
                 <button
                   onClick={() => setSelectedAuditCredId(cred._id)}
-                  className="text-zinc-500 hover:text-zinc-300 flex items-center gap-1 text-[11px]"
+                  className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 flex items-center gap-1 text-[11px] cursor-pointer"
                   title="View Audit History"
                 >
                   <History className="h-3.5 w-3.5" />
@@ -258,7 +258,7 @@ export default function VaultPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleReveal(cred._id)}
-                    className="inline-flex items-center gap-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                    className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-600/20 dark:hover:bg-blue-600/30 dark:text-blue-400 dark:border-blue-500/30 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                   >
                     <Eye className="h-3.5 w-3.5" />
                     Reveal Secret
@@ -266,7 +266,7 @@ export default function VaultPage() {
 
                   <button
                     onClick={() => handleDelete(cred._id, cred.title)}
-                    className="text-zinc-500 hover:text-rose-400 p-1.5 rounded transition-colors"
+                    className="text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded transition-colors cursor-pointer"
                     title="Delete Credential"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -280,41 +280,41 @@ export default function VaultPage() {
 
       {/* Reveal Secret Modal */}
       {revealedCredId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-                <Lock className="h-5 w-5 text-emerald-400" />
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Lock className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 Decrypted Secret
               </h2>
-              <button onClick={closeReveal} className="text-zinc-400 hover:text-zinc-200 text-sm">
+              <button onClick={closeReveal} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm cursor-pointer">
                 ✕
               </button>
             </div>
 
-            <div className="p-3 bg-amber-950/30 border border-amber-900/50 rounded-lg text-xs text-amber-300 flex items-start gap-2">
-              <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <span>
                 This access has been logged in the audit trail for security compliance.
               </span>
             </div>
 
             {isRevealing ? (
-              <div className="py-6 text-center text-xs text-zinc-400 animate-pulse">
+              <div className="py-6 text-center text-xs text-zinc-500 dark:text-zinc-400 animate-pulse">
                 Decrypting with AES-256-GCM...
               </div>
             ) : (
               <div className="relative">
-                <pre className="p-3.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap select-all">
+                <pre className="p-3.5 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-mono text-emerald-700 dark:text-emerald-300 overflow-x-auto whitespace-pre-wrap select-all">
                   {revealedSecretText}
                 </pre>
                 <button
                   onClick={copySecret}
-                  className="absolute top-2.5 right-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 border border-zinc-700 transition-colors"
+                  className="absolute top-2.5 right-2.5 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 border border-zinc-200 dark:border-zinc-700 transition-colors shadow-xs cursor-pointer"
                 >
                   {copiedSecret ? (
                     <>
-                      <Check className="h-3 w-3 text-emerald-400" /> Copied
+                      <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Copied
                     </>
                   ) : (
                     <>
@@ -328,7 +328,7 @@ export default function VaultPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={closeReveal}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg transition-colors"
+                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
               >
                 Close &amp; Hide
               </button>
@@ -339,16 +339,16 @@ export default function VaultPage() {
 
       {/* Audit Logs Modal */}
       {selectedAuditCredId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-                <History className="h-5 w-5 text-blue-400" />
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <History className="h-5 w-5 text-blue-500" />
                 Access Audit Trail
               </h2>
               <button
                 onClick={() => setSelectedAuditCredId(null)}
-                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm cursor-pointer"
               >
                 ✕
               </button>
@@ -363,15 +363,15 @@ export default function VaultPage() {
                 auditLogs.map((log) => (
                   <div
                     key={log._id}
-                    className="p-2.5 rounded-lg bg-zinc-950/60 border border-zinc-800 flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs"
                   >
                     <div>
-                      <div className="font-semibold text-zinc-200 capitalize">
+                      <div className="font-semibold text-zinc-800 dark:text-zinc-200 capitalize">
                         {log.action.replace("_", " ")}
                       </div>
                       <div className="text-[11px] text-zinc-500">{log.userName}</div>
                     </div>
-                    <div className="text-[10px] text-zinc-400 font-mono">
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
                       {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
@@ -382,7 +382,7 @@ export default function VaultPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setSelectedAuditCredId(null)}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg transition-colors"
+                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
               >
                 Done
               </button>
@@ -393,16 +393,16 @@ export default function VaultPage() {
 
       {/* Add Credential Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-                <Lock className="h-5 w-5 text-blue-400" />
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Lock className="h-5 w-5 text-blue-500" />
                 Store Encrypted Secret
               </h2>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-zinc-400 hover:text-zinc-200 text-sm"
+                className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm cursor-pointer"
               >
                 ✕
               </button>
@@ -410,14 +410,14 @@ export default function VaultPage() {
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Client Organization *
                 </label>
                 <select
                   required
                   value={formData.organizationId}
                   onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                 >
                   <option value="">Select client...</option>
                   {organizations?.map((org) => (
@@ -430,22 +430,22 @@ export default function VaultPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Title *</label>
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Title *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. cPanel / MySQL"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Category</label>
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Category</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                   >
                     <option value="hosting">Hosting</option>
                     <option value="dns_registrar">DNS Registrar</option>
@@ -458,7 +458,7 @@ export default function VaultPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Login Username / Email *
                 </label>
                 <input
@@ -466,12 +466,12 @@ export default function VaultPage() {
                   required
                   value={formData.loginUsername}
                   onChange={(e) => setFormData({ ...formData, loginUsername: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Secret / Password *
                 </label>
                 <input
@@ -479,12 +479,12 @@ export default function VaultPage() {
                   required
                   value={formData.plainSecret}
                   onChange={(e) => setFormData({ ...formData, plainSecret: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 font-mono focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Access URL (Optional)
                 </label>
                 <input
@@ -492,22 +492,22 @@ export default function VaultPage() {
                   placeholder="https://cpanel.clientdomain.com"
                   value={formData.accessUrl}
                   onChange={(e) => setFormData({ ...formData, accessUrl: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
                 >
                   {isSubmitting ? "Encrypting..." : "Encrypt & Save"}
                 </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import {
   api,
@@ -20,6 +21,15 @@ import {
   ShieldCheck,
   Settings,
   CreditCard,
+  KeyRound,
+  Globe,
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle2,
+  Sparkles,
+  ExternalLink,
+  Laptop,
 } from "lucide-react";
 
 export default function OrganizationsPage() {
@@ -30,6 +40,8 @@ export default function OrganizationsPage() {
   const createInvitation = useMutation(api.invitations.create);
   const addSubscription = useMutation(api.subscriptions.add);
   const updateSubscription = useMutation(api.subscriptions.update);
+  const addDomain = useMutation(api.domains.add);
+  const addEmailLicense = useMutation(api.emailLicenses.add);
 
   // Map active subscriptions by organization ID
   const activeSubsByOrgId = useMemo(() => {
@@ -44,8 +56,16 @@ export default function OrganizationsPage() {
     return map;
   }, [allSubscriptions]);
 
-  // Add Client Modal State (Onboarding)
+  // Add Client Modal State (5-Step Onboarding Wizard)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [createdWizardResult, setCreatedWizardResult] = useState<{
+    orgId: Id<"organizations">;
+    name: string;
+    inviteUrl?: string;
+  } | null>(null);
+  const [copiedWizardInvite, setCopiedWizardInvite] = useState(false);
+
   const [createFormData, setCreateFormData] = useState({
     name: "",
     slug: "",
@@ -62,6 +82,21 @@ export default function OrganizationsPage() {
     monthlyFee: 250000,
     billingDayOfMonth: 1,
     planName: "Monthly SLA Maintenance & Engineering Retainer",
+    // Expiration Monitors Setup
+    primaryDomain: "",
+    domainRegistrar: "",
+    domainExpiresMonths: 12,
+    setupEmail: false,
+    emailProvider: "google_workspace" as
+      | "google_workspace"
+      | "microsoft_365"
+      | "zoho"
+      | "cpanel_imap"
+      | "other",
+    emailSeats: 5,
+    emailRenewalMonths: 12,
+    // Admin Invitation
+    adminInviteEmail: "",
   });
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
 
@@ -121,9 +156,9 @@ export default function OrganizationsPage() {
     }));
   };
 
-  // Submit new client onboarding
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Submit new client onboarding through the wizard
+  const handleCreateSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!createFormData.name || !createFormData.slug) return;
 
     try {
@@ -142,7 +177,7 @@ export default function OrganizationsPage() {
         currency: createFormData.currency,
       });
 
-      // If Maintenance Retainer is specified, create the subscription contract & initial invoice
+      // 1. If Maintenance Retainer is specified, create the subscription contract & initial invoice
       if (createFormData.hasMaintenance && Number(createFormData.monthlyFee) > 0) {
         const nextBilling = new Date();
         nextBilling.setMonth(nextBilling.getMonth() + 1);
@@ -162,28 +197,98 @@ export default function OrganizationsPage() {
         });
       }
 
-      setIsCreateModalOpen(false);
-      setCreateFormData({
-        name: "",
-        slug: "",
-        contactEmail: "",
-        phone: "",
-        country: "NG",
-        currency: "NGN",
-        logoUrl: "",
-        primaryColor: "#006e2b",
-        secondaryColor: "#16a34a",
-        theme: "white",
-        hasMaintenance: false,
-        monthlyFee: 250000,
-        billingDayOfMonth: 1,
-        planName: "Monthly SLA Maintenance & Engineering Retainer",
+      // 2. If Primary Domain is specified, register domain expiration monitoring
+      if (createFormData.primaryDomain.trim()) {
+        const expiresAt =
+          Date.now() +
+          (Number(createFormData.domainExpiresMonths) || 12) * 30 * 24 * 60 * 60 * 1000;
+        await addDomain({
+          organizationId: orgId,
+          domainName: createFormData.primaryDomain.trim(),
+          registrar: createFormData.domainRegistrar.trim() || undefined,
+          expiresAt,
+          autoRenewStatus: true,
+          notes: "Configured during initial client onboarding wizard",
+        });
+      }
+
+      // 3. If Email setup is enabled, configure email license monitoring
+      if (createFormData.setupEmail) {
+        const renewalDate =
+          Date.now() +
+          (Number(createFormData.emailRenewalMonths) || 12) * 30 * 24 * 60 * 60 * 1000;
+        await addEmailLicense({
+          organizationId: orgId,
+          provider: createFormData.emailProvider,
+          adminEmail:
+            createFormData.contactEmail.trim() ||
+            `admin@${createFormData.primaryDomain.trim() || "client.com"}`,
+          seatCount: Number(createFormData.emailSeats) || 5,
+          costPerSeat: 6,
+          currency: createFormData.currency,
+          renewalDate,
+        });
+      }
+
+      // 4. If admin invitation email provided, generate cryptographically secure invitation
+      let generatedUrl: string | undefined = undefined;
+      const targetInviteEmail =
+        createFormData.adminInviteEmail.trim() || createFormData.contactEmail.trim();
+      if (targetInviteEmail) {
+        try {
+          const inv = await createInvitation({
+            organizationId: orgId,
+            email: targetInviteEmail.toLowerCase(),
+            role: "client_admin",
+          });
+          if (typeof window !== "undefined") {
+            generatedUrl = `${window.location.origin}/invite/${inv.token}`;
+          }
+        } catch {
+          // If invitation fails, tenant org is still created successfully
+        }
+      }
+
+      setCreatedWizardResult({
+        orgId,
+        name: createFormData.name,
+        inviteUrl: generatedUrl,
       });
     } catch (err: any) {
       alert("Error creating organization: " + err.message);
     } finally {
       setIsSubmittingCreate(false);
     }
+  };
+
+  const handleFinishWizard = () => {
+    setIsCreateModalOpen(false);
+    setCreatedWizardResult(null);
+    setWizardStep(1);
+    setCreateFormData({
+      name: "",
+      slug: "",
+      contactEmail: "",
+      phone: "",
+      country: "NG",
+      currency: "NGN",
+      logoUrl: "",
+      primaryColor: "#006e2b",
+      secondaryColor: "#16a34a",
+      theme: "white",
+      hasMaintenance: false,
+      monthlyFee: 250000,
+      billingDayOfMonth: 1,
+      planName: "Monthly SLA Maintenance & Engineering Retainer",
+      primaryDomain: "",
+      domainRegistrar: "",
+      domainExpiresMonths: 12,
+      setupEmail: false,
+      emailProvider: "google_workspace",
+      emailSeats: 5,
+      emailRenewalMonths: 12,
+      adminInviteEmail: "",
+    });
   };
 
   // Open Edit Client & Retainer Modal
@@ -506,7 +611,16 @@ export default function OrganizationsPage() {
                     {new Date(org.createdAt).toLocaleDateString()}
                   </span>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/vault"
+                      className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium cursor-pointer text-xs bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200"
+                      title="View Credentials Vault"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-gray-500" />
+                      <span>Vault</span>
+                    </Link>
+
                     <button
                       onClick={() => openEditModal(org)}
                       className="inline-flex items-center gap-1 text-gray-700 hover:text-gray-900 font-medium cursor-pointer text-xs bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200"
@@ -535,263 +649,798 @@ export default function OrganizationsPage() {
         </div>
       )}
 
-      {/* 1. Add Client Organization Modal (Onboarding with Maintenance Checkbox) */}
+      {/* 1. Add Client Organization Modal (5-Step Onboarding Wizard) */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-gray-200 rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4 my-8">
+          <div className="bg-white border border-gray-200 rounded-2xl max-w-2xl w-full p-6 shadow-xl space-y-5 my-8">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-emerald-700" />
-                Add Client Organization
-              </h2>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">
+                    Client Onboarding Wizard
+                  </h2>
+                  <p className="text-[11px] text-gray-500">
+                    Step {wizardStep} of 5 — Configure profile, branding, SLA retainer &amp; monitoring
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 text-sm cursor-pointer"
+                onClick={handleFinishWizard}
+                className="text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1 rounded-md hover:bg-gray-100"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
-              {/* Basic Client Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Organization Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Acme Motors"
-                    value={createFormData.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Tenant Slug *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={createFormData.slug}
-                    onChange={(e) => setCreateFormData({ ...createFormData, slug: e.target.value })}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 font-mono focus:outline-hidden focus:border-emerald-600"
-                  />
-                </div>
+            {/* Wizard Stepper Bar */}
+            {!createdWizardResult && (
+              <div className="grid grid-cols-5 gap-1.5 p-1 bg-gray-50 rounded-xl border border-gray-200/70 text-center">
+                {[
+                  { step: 1, label: "Profile" },
+                  { step: 2, label: "Branding" },
+                  { step: 3, label: "SLA Retainer" },
+                  { step: 4, label: "Monitors" },
+                  { step: 5, label: "Launch" },
+                ].map((s) => {
+                  const isActive = wizardStep === s.step;
+                  const isCompleted = wizardStep > s.step;
+                  return (
+                    <button
+                      key={s.step}
+                      type="button"
+                      onClick={() => {
+                        if (wizardStep > s.step || (createFormData.name && createFormData.slug)) {
+                          setWizardStep(s.step as any);
+                        }
+                      }}
+                      className={`flex flex-col items-center py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-white text-emerald-800 shadow-xs border border-gray-200"
+                          : isCompleted
+                          ? "text-emerald-700 hover:bg-gray-100"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      <span
+                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] mb-0.5 ${
+                          isActive
+                            ? "bg-emerald-600 text-white"
+                            : isCompleted
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {isCompleted ? "✓" : s.step}
+                      </span>
+                      <span className="truncate w-full">{s.label}</span>
+                    </button>
+                  );
+                })}
               </div>
+            )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Wizard Step Content or Success Result */}
+            {createdWizardResult ? (
+              <div className="py-6 px-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Contact Email
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="contact@clientdomain.com"
-                    value={createFormData.contactEmail}
-                    onChange={(e) => setCreateFormData({ ...createFormData, contactEmail: e.target.value })}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                  />
+                  <h3 className="text-base font-bold text-gray-900">
+                    Client Onboarded Successfully!
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                    <strong>{createdWizardResult.name}</strong> is now configured with custom branding, monitoring, and SLA retainer contract.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">
-                    Billing Country
-                  </label>
-                  <select
-                    value={createFormData.country}
-                    onChange={(e) => handleCountryChangeOnboarding(e.target.value)}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                  >
-                    {Object.values(SUPPORTED_PAYSTACK_COUNTRIES).map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.name} ({c.currency})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Branding Section */}
-              <div className="p-3.5 bg-gray-50/80 rounded-xl border border-gray-200/80 space-y-3">
-                <div className="flex items-center gap-1.5 font-semibold text-gray-800">
-                  <Palette className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Client White-label Branding (Max 2 Colors)</span>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
-                    Client Logo URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://clientdomain.com/logo.png"
-                    value={createFormData.logoUrl}
-                    onChange={(e) => setCreateFormData({ ...createFormData, logoUrl: e.target.value })}
-                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-gray-600 mb-1">
-                      Primary Accent Color
+                {createdWizardResult.inviteUrl ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 max-w-lg mx-auto text-left space-y-2">
+                    <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider">
+                      Client Administrator Invitation Link
                     </label>
                     <div className="flex items-center gap-2">
                       <input
-                        type="color"
-                        value={createFormData.primaryColor}
-                        onChange={(e) => setCreateFormData({ ...createFormData, primaryColor: e.target.value })}
-                        className="w-7 h-7 rounded border border-gray-300 cursor-pointer p-0 bg-transparent"
-                      />
-                      <input
                         type="text"
-                        value={createFormData.primaryColor}
-                        onChange={(e) => setCreateFormData({ ...createFormData, primaryColor: e.target.value })}
-                        className="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs font-mono uppercase"
+                        readOnly
+                        value={createdWizardResult.inviteUrl}
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-gray-700 select-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(createdWizardResult.inviteUrl || "");
+                          setCopiedWizardInvite(true);
+                          setTimeout(() => setCopiedWizardInvite(false), 2000);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shrink-0 cursor-pointer"
+                      >
+                        {copiedWizardInvite ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-gray-600 mb-1">
-                      Secondary Color
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={createFormData.secondaryColor}
-                        onChange={(e) => setCreateFormData({ ...createFormData, secondaryColor: e.target.value })}
-                        className="w-7 h-7 rounded border border-gray-300 cursor-pointer p-0 bg-transparent"
-                      />
-                      <input
-                        type="text"
-                        value={createFormData.secondaryColor}
-                        onChange={(e) => setCreateFormData({ ...createFormData, secondaryColor: e.target.value })}
-                        className="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-xs font-mono uppercase"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-gray-500">
-                  Default theme is <span className="font-semibold text-gray-700">White</span> (compatible with client logos out-of-the-box).
-                </div>
-              </div>
-
-              {/* Maintenance Retainer Section (Checkbox & Conditionally Rendered Fields) */}
-              <div className="p-3.5 bg-emerald-50/50 rounded-xl border border-emerald-200/80 space-y-3">
-                <div className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    id="hasMaintenance"
-                    checked={createFormData.hasMaintenance}
-                    onChange={(e) => setCreateFormData({ ...createFormData, hasMaintenance: e.target.checked })}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                  />
-                  <div>
-                    <label htmlFor="hasMaintenance" className="font-bold text-gray-900 cursor-pointer">
-                      SLA Maintenance Retainer Contract
-                    </label>
-                    <p className="text-[11px] text-gray-600 mt-0.5">
-                      Enable monthly recurring maintenance billing via Paystack, automated renewal tracking, and visual editor updates.
+                    <p className="text-[11px] text-gray-500">
+                      Send this link to the client admin so they can access their portal dashboard.
                     </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200 max-w-md mx-auto">
+                    You can invite team members at any time using the &quot;Invite&quot; button on their client card.
+                  </div>
+                )}
 
-                {createFormData.hasMaintenance && (
-                  <div className="space-y-3 pt-2 border-t border-emerald-200/60 animate-in fade-in duration-200">
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleFinishWizard}
+                    className="px-5 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold cursor-pointer shadow-xs"
+                  >
+                    Done &amp; View All Clients
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs min-h-[340px] flex flex-col justify-between">
+                {/* STEP 1: Profile & Country */}
+                {wizardStep === 1 && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block font-semibold text-gray-800 mb-1">
-                          Billing Currency
-                        </label>
-                        <select
-                          value={createFormData.currency}
-                          onChange={(e) => setCreateFormData({ ...createFormData, currency: e.target.value })}
-                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                        >
-                          <option value="NGN">NGN (₦) - Nigerian Naira</option>
-                          <option value="USD">USD ($) - US Dollar (Global)</option>
-                          <option value="GHS">GHS (GH₵) - Ghanaian Cedi</option>
-                          <option value="KES">KES (KSh) - Kenyan Shilling</option>
-                          <option value="ZAR">ZAR (R) - South African Rand</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block font-semibold text-gray-800 mb-1">
-                          Negotiated Monthly Retainer Fee *
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            required={createFormData.hasMaintenance}
-                            min="1"
-                            step="any"
-                            value={createFormData.monthlyFee}
-                            onChange={(e) => setCreateFormData({ ...createFormData, monthlyFee: Number(e.target.value) })}
-                            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                          />
-                        </div>
-                        <p className="text-[10px] text-gray-500 mt-0.5">
-                          Custom amount negotiated separately for this client.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block font-semibold text-gray-800 mb-1">
-                          Billing Day of Month
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="28"
-                          value={createFormData.billingDayOfMonth}
-                          onChange={(e) => setCreateFormData({ ...createFormData, billingDayOfMonth: Number(e.target.value) })}
-                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block font-semibold text-gray-800 mb-1">
-                          Plan Description
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          Client / Organization Name *
                         </label>
                         <input
                           type="text"
-                          value={createFormData.planName}
-                          onChange={(e) => setCreateFormData({ ...createFormData, planName: e.target.value })}
+                          required
+                          placeholder="e.g. Acme Motors"
+                          value={createFormData.name}
+                          onChange={(e) => handleNameChange(e.target.value)}
                           className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
                         />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          Tenant Slug *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={createFormData.slug}
+                          onChange={(e) => setCreateFormData({ ...createFormData, slug: e.target.value })}
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 font-mono focus:outline-hidden focus:border-emerald-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          Primary Contact Email
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="contact@clientdomain.com"
+                          value={createFormData.contactEmail}
+                          onChange={(e) =>
+                            setCreateFormData({ ...createFormData, contactEmail: e.target.value })
+                          }
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          Billing Jurisdiction / Country *
+                        </label>
+                        <select
+                          value={createFormData.country}
+                          onChange={(e) => handleCountryChangeOnboarding(e.target.value)}
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                        >
+                          {Object.values(SUPPORTED_PAYSTACK_COUNTRIES).map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.flag} {c.name} ({c.currency})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">
+                        Phone Number (Optional)
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="+234 800 000 0000"
+                        value={createFormData.phone}
+                        onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                      />
+                    </div>
+
+                    <div className="p-3 bg-blue-50/70 border border-blue-200/60 rounded-xl text-blue-900 text-[11px] flex items-start gap-2">
+                      <Globe className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      <span>
+                        Selecting the country locks the client portal into Paystack local currency processing (e.g. ₦ NGN, GH₵ GHS, KSh KES, R ZAR, or $ USD for international accounts).
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: White-Label Branding & Live Preview */}
+                {wizardStep === 2 && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-3">
+                      <div className="flex items-center gap-1.5 font-semibold text-gray-800">
+                        <Palette className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>White-Label Brand Palette (Max 2 Colors)</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                          Client Logo URL (Optional)
+                        </label>
+                        <input
+                          type="url"
+                          placeholder="https://clientdomain.com/logo.png"
+                          value={createFormData.logoUrl}
+                          onChange={(e) =>
+                            setCreateFormData({ ...createFormData, logoUrl: e.target.value })
+                          }
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                            Primary Accent Color
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={createFormData.primaryColor}
+                              onChange={(e) =>
+                                setCreateFormData({
+                                  ...createFormData,
+                                  primaryColor: e.target.value,
+                                })
+                              }
+                              className="w-8 h-8 rounded border border-gray-300 cursor-pointer p-0 bg-transparent shrink-0"
+                            />
+                            <input
+                              type="text"
+                              value={createFormData.primaryColor}
+                              onChange={(e) =>
+                                setCreateFormData({
+                                  ...createFormData,
+                                  primaryColor: e.target.value,
+                                })
+                              }
+                              className="w-full bg-white border border-gray-300 rounded-md px-2 py-1.5 text-xs font-mono uppercase"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                            Secondary Brand Color
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={createFormData.secondaryColor}
+                              onChange={(e) =>
+                                setCreateFormData({
+                                  ...createFormData,
+                                  secondaryColor: e.target.value,
+                                })
+                              }
+                              className="w-8 h-8 rounded border border-gray-300 cursor-pointer p-0 bg-transparent shrink-0"
+                            />
+                            <input
+                              type="text"
+                              value={createFormData.secondaryColor}
+                              onChange={(e) =>
+                                setCreateFormData({
+                                  ...createFormData,
+                                  secondaryColor: e.target.value,
+                                })
+                              }
+                              className="w-full bg-white border border-gray-300 rounded-md px-2 py-1.5 text-xs font-mono uppercase"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-gray-500">
+                        Default theme is <strong className="text-gray-800">White</strong> (neutral base guaranteed to render crisp contrast with custom client logos).
+                      </div>
+                    </div>
+
+                    {/* Live Interactive Client Portal Preview */}
+                    <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 flex items-center justify-between text-[11px] text-gray-600">
+                        <span className="flex items-center gap-1 font-semibold">
+                          <Laptop className="w-3.5 h-3.5 text-gray-500" />
+                          Live Client Portal Preview
+                        </span>
+                        <span className="text-[10px] text-gray-400">Light Theme</span>
+                      </div>
+                      <div className="p-4 bg-white space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                          <div className="flex items-center gap-2.5">
+                            {createFormData.logoUrl ? (
+                              <img
+                                src={createFormData.logoUrl}
+                                alt="Client Logo"
+                                className="w-7 h-7 object-contain rounded"
+                                onError={(e) => {
+                                  // Fallback to initial monogram
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div
+                                className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white"
+                                style={{ backgroundColor: createFormData.primaryColor }}
+                              >
+                                {createFormData.name ? createFormData.name.slice(0, 2).toUpperCase() : "CL"}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-bold text-xs text-gray-900">
+                                {createFormData.name || "Client Name"}
+                              </div>
+                              <div className="text-[10px] text-gray-400">Client Portal</div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="px-2 py-0.5 rounded text-[10px] font-semibold text-white"
+                              style={{ backgroundColor: createFormData.primaryColor }}
+                            >
+                              Active Retainer
+                            </span>
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: createFormData.secondaryColor }}
+                              title="Secondary Brand Color"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-gray-500 pt-1">
+                          <span className="font-semibold text-gray-900 px-2 py-1 rounded bg-gray-50 border border-gray-200">
+                            Dashboard
+                          </span>
+                          <span>Billing</span>
+                          <span>Help &amp; Tutorials</span>
+                          <span>Secure Vault</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Modal Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingCreate}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
-                >
-                  {isSubmittingCreate ? "Creating..." : "Create Organization"}
-                </button>
+                {/* STEP 3: SLA Maintenance Retainer */}
+                {wizardStep === 3 && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200/80 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          id="wizardHasMaintenance"
+                          checked={createFormData.hasMaintenance}
+                          onChange={(e) =>
+                            setCreateFormData({
+                              ...createFormData,
+                              hasMaintenance: e.target.checked,
+                            })
+                          }
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <div>
+                          <label
+                            htmlFor="wizardHasMaintenance"
+                            className="font-bold text-gray-900 cursor-pointer text-xs"
+                          >
+                            Client has SLA Maintenance Retainer Contract
+                          </label>
+                          <p className="text-[11px] text-gray-600 mt-0.5">
+                            Check this if this client has a negotiated monthly SLA retainer. You can enter their individually agreed rate in any currency below.
+                          </p>
+                        </div>
+                      </div>
+
+                      {createFormData.hasMaintenance && (
+                        <div className="space-y-3 pt-3 border-t border-emerald-200/60 animate-in fade-in duration-150">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block font-semibold text-gray-800 mb-1">
+                                Billing Currency
+                              </label>
+                              <select
+                                value={createFormData.currency}
+                                onChange={(e) =>
+                                  setCreateFormData({
+                                    ...createFormData,
+                                    currency: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                              >
+                                <option value="NGN">NGN (₦) - Nigerian Naira</option>
+                                <option value="USD">USD ($) - US Dollar (Global)</option>
+                                <option value="GHS">GHS (GH₵) - Ghanaian Cedi</option>
+                                <option value="KES">KES (KSh) - Kenyan Shilling</option>
+                                <option value="ZAR">ZAR (R) - South African Rand</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block font-semibold text-gray-800 mb-1">
+                                Negotiated Monthly Retainer Fee *
+                              </label>
+                              <input
+                                type="number"
+                                required={createFormData.hasMaintenance}
+                                min="1"
+                                step="any"
+                                value={createFormData.monthlyFee}
+                                onChange={(e) =>
+                                  setCreateFormData({
+                                    ...createFormData,
+                                    monthlyFee: Number(e.target.value),
+                                  })
+                                }
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs font-bold text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                              />
+                              <p className="text-[10px] text-gray-500 mt-0.5">
+                                Amounts are negotiated individually per client.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-semibold text-gray-800 mb-1">
+                                Billing Day of Month
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="28"
+                                value={createFormData.billingDayOfMonth}
+                                onChange={(e) =>
+                                  setCreateFormData({
+                                    ...createFormData,
+                                    billingDayOfMonth: Number(e.target.value),
+                                  })
+                                }
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                              />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              <label className="block font-semibold text-gray-800 mb-1">
+                                Retainer Plan Description
+                              </label>
+                              <input
+                                type="text"
+                                value={createFormData.planName}
+                                onChange={(e) =>
+                                  setCreateFormData({
+                                    ...createFormData,
+                                    planName: e.target.value,
+                                  })
+                                }
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {!createFormData.hasMaintenance && (
+                      <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-gray-600 text-xs">
+                        <strong className="text-gray-900">Pay-As-You-Go Client:</strong> This client will not be billed automatically on a recurring monthly retainer. Ad-hoc development invoices can be issued manually via Billing.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* STEP 4: Expiration Monitoring Setup */}
+                {wizardStep === 4 && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    {/* Primary Domain */}
+                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-3">
+                      <div className="flex items-center gap-1.5 font-semibold text-gray-800">
+                        <Globe className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Primary Domain &amp; WHOIS Monitor</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                            Domain Name (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="acmemotors.com"
+                            value={createFormData.primaryDomain}
+                            onChange={(e) =>
+                              setCreateFormData({
+                                ...createFormData,
+                                primaryDomain: e.target.value,
+                              })
+                            }
+                            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600 font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                            Domain Registrar
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Namecheap / GoDaddy / Cloudflare"
+                            value={createFormData.domainRegistrar}
+                            onChange={(e) =>
+                              setCreateFormData({
+                                ...createFormData,
+                                domainRegistrar: e.target.value,
+                              })
+                            }
+                            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                          Estimated Expiry / Renewal Timeline
+                        </label>
+                        <select
+                          value={createFormData.domainExpiresMonths}
+                          onChange={(e) =>
+                            setCreateFormData({
+                              ...createFormData,
+                              domainExpiresMonths: Number(e.target.value),
+                            })
+                          }
+                          className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                        >
+                          <option value="6">Renews in 6 months</option>
+                          <option value="12">Renews in 12 months (1 year standard)</option>
+                          <option value="24">Renews in 24 months (2 years)</option>
+                          <option value="36">Renews in 36 months (3 years)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Email License Tracking */}
+                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          id="setupEmailTracking"
+                          checked={createFormData.setupEmail}
+                          onChange={(e) =>
+                            setCreateFormData({ ...createFormData, setupEmail: e.target.checked })
+                          }
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <div>
+                          <label
+                            htmlFor="setupEmailTracking"
+                            className="font-bold text-gray-900 cursor-pointer text-xs flex items-center gap-1.5"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Monitor Business Email Licenses</span>
+                          </label>
+                          <p className="text-[11px] text-gray-600 mt-0.5">
+                            Track Google Workspace or Microsoft 365 seat renewals and avoid suspension.
+                          </p>
+                        </div>
+                      </div>
+
+                      {createFormData.setupEmail && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-200 animate-in fade-in duration-150">
+                          <div>
+                            <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                              Email Provider
+                            </label>
+                            <select
+                              value={createFormData.emailProvider}
+                              onChange={(e) =>
+                                setCreateFormData({
+                                  ...createFormData,
+                                  emailProvider: e.target.value as any,
+                                })
+                              }
+                              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                            >
+                              <option value="google_workspace">Google Workspace</option>
+                              <option value="microsoft_365">Microsoft 365</option>
+                              <option value="zoho">Zoho Mail</option>
+                              <option value="cpanel_imap">cPanel / IMAP Server</option>
+                              <option value="other">Other Provider</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                              Seat Count
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={createFormData.emailSeats}
+                              onChange={(e) =>
+                                setCreateFormData({
+                                  ...createFormData,
+                                  emailSeats: Number(e.target.value),
+                                })
+                              }
+                              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 5: Launch & Summary */}
+                {wizardStep === 5 && (
+                  <div className="space-y-4 animate-in fade-in duration-150">
+                    <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
+                      <label className="block font-semibold text-gray-800 text-xs flex items-center gap-1.5">
+                        <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Client Administrator Invite Email (Optional)</span>
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="clientadmin@domain.com"
+                        value={createFormData.adminInviteEmail || createFormData.contactEmail}
+                        onChange={(e) =>
+                          setCreateFormData({
+                            ...createFormData,
+                            adminInviteEmail: e.target.value,
+                          })
+                        }
+                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 focus:outline-hidden focus:border-emerald-600"
+                      />
+                      <p className="text-[11px] text-gray-500">
+                        An invite link will be generated automatically when you complete this wizard.
+                      </p>
+                    </div>
+
+                    {/* Summary Overview */}
+                    <div className="p-4 bg-white rounded-xl border border-gray-200 space-y-2.5">
+                      <div className="font-bold text-gray-900 text-xs border-b border-gray-100 pb-2">
+                        Summary Review
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-gray-500">Company:</span>{" "}
+                          <strong className="text-gray-900">{createFormData.name}</strong>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Jurisdiction:</span>{" "}
+                          <strong className="text-gray-900">
+                            {createFormData.country} ({createFormData.currency})
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Branding:</span>{" "}
+                          <span className="inline-flex items-center gap-1">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full inline-block border"
+                              style={{ backgroundColor: createFormData.primaryColor }}
+                            />
+                            <span
+                              className="w-2.5 h-2.5 rounded-full inline-block border"
+                              style={{ backgroundColor: createFormData.secondaryColor }}
+                            />
+                            <span>White Theme</span>
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">SLA Retainer:</span>{" "}
+                          {createFormData.hasMaintenance ? (
+                            <strong className="text-emerald-700">
+                              {formatCurrencyAmount(
+                                createFormData.monthlyFee,
+                                createFormData.currency
+                              )}{" "}
+                              / mo
+                            </strong>
+                          ) : (
+                            <span className="text-gray-500">Pay-as-you-go</span>
+                          )}
+                        </div>
+                        {createFormData.primaryDomain && (
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Primary Domain:</span>{" "}
+                            <span className="font-mono text-gray-800">
+                              {createFormData.primaryDomain}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Wizard Footer Controls */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div>
+                    {wizardStep > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setWizardStep((prev) => (prev - 1) as any)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>Back</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleFinishWizard}
+                      className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+
+                    {wizardStep < 5 ? (
+                      <button
+                        type="button"
+                        disabled={wizardStep === 1 && (!createFormData.name || !createFormData.slug)}
+                        onClick={() => setWizardStep((prev) => (prev + 1) as any)}
+                        className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isSubmittingCreate}
+                        onClick={() => handleCreateSubmit()}
+                        className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-5 py-2 rounded-lg transition-colors cursor-pointer shadow-xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{isSubmittingCreate ? "Launching Client..." : "Launch Client Account"}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}

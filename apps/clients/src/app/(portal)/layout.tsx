@@ -13,6 +13,7 @@ import {
   GitPullRequest,
   CreditCard,
   Image as ImageIcon,
+  KeyRound,
   LogOut,
   ExternalLink,
   type LucideIcon,
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { name: "Staged Changes", href: "/changes", icon: GitPullRequest },
   { name: "Media Assets", href: "/media", icon: ImageIcon },
   { name: "Billing & Retainers", href: "/billing", icon: CreditCard },
+  { name: "Secure Vault", href: "/vault", icon: KeyRound },
 ];
 
 const routeTitles: Record<string, { title: string; subtitle: string }> = {
@@ -56,6 +58,10 @@ const routeTitles: Record<string, { title: string; subtitle: string }> = {
   "/billing": {
     title: "Billing & Retainers",
     subtitle: "Your active maintenance agreement and payment history",
+  },
+  "/vault": {
+    title: "Secure Vault",
+    subtitle: "End-to-end encrypted credentials and shared access keys",
   },
 };
 

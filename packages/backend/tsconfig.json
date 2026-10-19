@@ -1,0 +1,16 @@
+{
+  "extends": "@orifa/tsconfig/base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": [
+    "index.ts",
+    "convex/**/*.ts"
+  ]
+}

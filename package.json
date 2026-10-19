@@ -2,11 +2,16 @@
   "name": "orifa-admin",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
+    "dev:agency": "npm --prefix apps/agency-admin run dev",
+    "dev:portal": "npm --prefix apps/client-portal run dev",
+    "dev:convex": "npm --prefix packages/backend run dev",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
     "typecheck": "tsc --noEmit",
     "check:unused": "knip --no-exit-code",
     "check:unused:strict": "knip",

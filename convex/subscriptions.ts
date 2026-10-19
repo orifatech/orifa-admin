@@ -1,30 +1,32 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertSuperAdmin, getViewer } from "./lib/auth";
+import { assertSuperAdmin } from "./lib/auth";
+import { assertTenantContext, logSecurityAudit } from "./lib/tenant";
 
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer) return [];
+    const { organizationId, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      args.organizationId,
+      { resourceType: "subscriptions" }
+    );
 
     let subs;
-    const targetOrgId = args.organizationId;
-    if (viewer.role === "super_admin") {
-      if (targetOrgId) {
+    if (isSuperAdmin) {
+      if (organizationId) {
         subs = await ctx.db
           .query("subscriptions")
-          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
+          .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
           .collect();
       } else {
         subs = await ctx.db.query("subscriptions").collect();
       }
     } else {
-      const viewerOrgId = viewer.organizationId;
-      if (!viewerOrgId) return [];
+      if (!organizationId) return [];
       subs = await ctx.db
         .query("subscriptions")
-        .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
+        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
         .collect();
     }
 
@@ -43,13 +45,8 @@ export const list = query({
 export const getMRR = query({
   args: {},
   handler: async (ctx) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer || viewer.role !== "super_admin") {
-      return {
-        activeSubscribersCount: 0,
-        totalsByCurrency: {},
-      };
-    }
+    // Platform-level MRR aggregates are strictly restricted to Orifa super administrators
+    await assertSuperAdmin(ctx);
 
     const subs = await ctx.db.query("subscriptions").collect();
     const activeSubs = subs.filter((s) => s.status === "active");
@@ -73,16 +70,42 @@ export const add = mutation({
     planName: v.string(),
     monthlyFee: v.number(),
     currency: v.string(),
-    billingCycle: v.union(v.literal("monthly"), v.literal("quarterly"), v.literal("annual"), v.literal("ad_hoc")),
+    billingCycle: v.union(
+      v.literal("monthly"),
+      v.literal("quarterly"),
+      v.literal("annual"),
+      v.literal("ad_hoc")
+    ),
     billingDayOfMonth: v.number(),
     nextBillingDate: v.number(),
-    status: v.union(v.literal("active"), v.literal("overdue"), v.literal("cancelled"), v.literal("not_applicable")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("overdue"),
+      v.literal("cancelled"),
+      v.literal("not_applicable")
+    ),
     paymentMethod: v.string(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
-    return await ctx.db.insert("subscriptions", args);
+    const admin = await assertSuperAdmin(ctx);
+    const subId = await ctx.db.insert("subscriptions", args);
+
+    await logSecurityAudit(ctx, {
+      tenantId: args.organizationId,
+      actorId: admin._id,
+      action: "subscription_created",
+      resourceType: "subscriptions",
+      resourceId: subId as string,
+      severity: "info",
+      details: {
+        planName: args.planName,
+        monthlyFee: args.monthlyFee,
+        currency: args.currency,
+      },
+    });
+
+    return subId;
   },
 });
 
@@ -104,16 +127,42 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const admin = await assertSuperAdmin(ctx);
+    const sub = await ctx.db.get(args.subscriptionId);
+    if (!sub) throw new Error("Subscription not found.");
+
     const { subscriptionId, ...updates } = args;
     await ctx.db.patch(subscriptionId, updates);
+
+    await logSecurityAudit(ctx, {
+      tenantId: sub.organizationId,
+      actorId: admin._id,
+      action: "subscription_updated",
+      resourceType: "subscriptions",
+      resourceId: subscriptionId as string,
+      severity: "info",
+      details: updates,
+    });
   },
 });
 
 export const deleteSubscription = mutation({
   args: { subscriptionId: v.id("subscriptions") },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const admin = await assertSuperAdmin(ctx);
+    const sub = await ctx.db.get(args.subscriptionId);
+    if (!sub) return;
+
     await ctx.db.delete(args.subscriptionId);
+
+    await logSecurityAudit(ctx, {
+      tenantId: sub.organizationId,
+      actorId: admin._id,
+      action: "subscription_deleted",
+      resourceType: "subscriptions",
+      resourceId: args.subscriptionId as string,
+      severity: "warning",
+      details: { planName: sub.planName },
+    });
   },
 });

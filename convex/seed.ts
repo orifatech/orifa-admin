@@ -1,157 +1,92 @@
-import { mutation } from "./_generated/server";
+import { mutation, action } from "./_generated/server";
+import { createAccount } from "@convex-dev/auth/server";
+import { assertSuperAdmin } from "./lib/auth";
 
-export const seedSampleData = mutation({
+export const wipeAllDatabaseRecords = mutation({
   args: {},
   handler: async (ctx) => {
-    // 1. Check or create Orifa Technologies Org
-    let org = await ctx.db
-      .query("organizations")
-      .withIndex("by_slug", (q) => q.eq("slug", "orifatech"))
-      .first();
+    // OWASP & Production Safety: Strictly restrict dangerous administrative reset operations
+    await assertSuperAdmin(ctx);
 
-    if (!org) {
-      const orgId = await ctx.db.insert("organizations", {
-        name: "Orifa Technologies",
-        slug: "orifatech",
-        contactEmail: "admin@orifatech.com",
-        phone: "+1 (555) 019-2834",
-        billingStatus: "active",
-        createdAt: Date.now(),
-      });
-      org = await ctx.db.get(orgId);
+    if (process.env.ALLOW_DATABASE_WIPE !== "true") {
+      throw new Error(
+        "Forbidden: Database wipe is disabled. Set ALLOW_DATABASE_WIPE='true' in environment variables to execute."
+      );
     }
 
-    if (!org) throw new Error("Failed to create org.");
+    const tables = [
+      "stagedChanges",
+      "mediaAssets",
+      "blogPosts",
+      "domainMonitors",
+      "subscriptions",
+      "emailLicenses",
+      "vaultAuditLogs",
+      "vaultCredentials",
+      "projects",
+      "invitations",
+      "auditLogs",
+      "organizations",
+      "authSessions",
+      "authAccounts",
+      "authVerificationCodes",
+      "authVerifiers",
+      "authRateLimits",
+      "authRefreshTokens",
+      "users",
+    ] as const;
 
-    // 2. Check or create sample project
-    const orgProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
-      .collect();
+    const deletionStats: Record<string, number> = {};
 
-    let project = orgProjects.find((p) => p.name === "Orifatech Official Site") ?? null;
-
-    if (!project) {
-      const projectId = await ctx.db.insert("projects", {
-        organizationId: org._id,
-        name: "Orifatech Official Site",
-        productionUrl: "https://orifatech.com",
-        framework: "astro",
-        githubRepoOwner: "elero-obaitan",
-        githubRepoName: "orifatech",
-        githubDefaultBranch: "main",
-        contentRootPath: "src/content",
-        editorSecretToken: "orifa_sec_" + Math.random().toString(36).slice(2, 10),
-        gitPublishMode: "pull_request",
-        hasMaintenanceContract: true,
-        createdAt: Date.now(),
-      });
-      project = await ctx.db.get(projectId);
-    } else if (!project.gitPublishMode) {
-      await ctx.db.patch(project._id, {
-        gitPublishMode: "pull_request",
-        hasMaintenanceContract: true,
-      });
-    }
-
-    if (!project) throw new Error("Failed to create project.");
-
-    // 3. Create sample staged changes if none exist
-    const existingChanges = await ctx.db
-      .query("stagedChanges")
-      .withIndex("by_project", (q) => q.eq("projectId", project._id))
-      .collect();
-
-    if (existingChanges.length === 0) {
-      await ctx.db.insert("stagedChanges", {
-        projectId: project._id,
-        organizationId: org._id,
-        contentKey: "hero.headline",
-        targetFile: "src/content/site-copy.json",
-        originalValue: "Modern Engineering for Bold Ideas",
-        proposedValue: "Next-Gen Software Development & Scalable Cloud Solutions",
-        contentType: "text",
-        status: "pending_review",
-        createdAt: Date.now(),
-      });
-
-      await ctx.db.insert("stagedChanges", {
-        projectId: project._id,
-        organizationId: org._id,
-        contentKey: "cta.buttonText",
-        targetFile: "src/content/site-copy.json",
-        originalValue: "Get in touch",
-        proposedValue: "Book Discovery Call",
-        contentType: "text",
-        status: "pending_review",
-        createdAt: Date.now(),
-      });
-    }
-
-    // 4. Sample Domain
-    const existingDomains = await ctx.db
-      .query("domainMonitors")
-      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    if (existingDomains.length === 0) {
-      await ctx.db.insert("domainMonitors", {
-        organizationId: org._id,
-        projectId: project._id,
-        domainName: "orifatech.com",
-        registrar: "Cloudflare",
-        expiresAt: Date.now() + 290 * 24 * 60 * 60 * 1000, // 290 days
-        lastCheckedAt: Date.now(),
-        autoRenewStatus: true,
-        status: "healthy",
-        notes: "Primary agency domain",
-      });
-    }
-
-    // 5. Sample Retainer Subscription
-    const existingSubs = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    if (existingSubs.length === 0) {
-      await ctx.db.insert("subscriptions", {
-        organizationId: org._id,
-        planName: "Monthly Full-Stack Retainer & Cloud Ops",
-        monthlyFee: 1500,
-        currency: "USD",
-        billingCycle: "monthly",
-        billingDayOfMonth: 1,
-        status: "active",
-        paymentMethod: "Wire Transfer",
-        nextBillingDate: Date.now() + 20 * 24 * 60 * 60 * 1000,
-      });
-    }
-
-    // 6. Sample Google Workspace License
-    const existingLicenses = await ctx.db
-      .query("emailLicenses")
-      .withIndex("by_org", (q) => q.eq("organizationId", org._id))
-      .collect();
-
-    if (existingLicenses.length === 0) {
-      await ctx.db.insert("emailLicenses", {
-        organizationId: org._id,
-        provider: "google_workspace",
-        adminEmail: "admin@orifatech.com",
-        seatCount: 6,
-        costPerSeat: 7.2,
-        currency: "USD",
-        renewalDate: Date.now() + 14 * 24 * 60 * 60 * 1000,
-        paymentCardLast4: "4242",
-        status: "active",
-      });
+    for (const table of tables) {
+      try {
+        const records = await ctx.db.query(table as any).collect();
+        deletionStats[table] = records.length;
+        for (const record of records) {
+          await ctx.db.delete(record._id);
+        }
+      } catch (err) {
+        console.warn(`Could not clear table ${table}:`, err);
+        deletionStats[table] = 0;
+      }
     }
 
     return {
       success: true,
-      orgId: org._id,
-      projectId: project._id,
+      deletionStats,
+    };
+  },
+});
+
+export const bootstrapSuperAdmin = action({
+  args: {},
+  handler: async (ctx) => {
+    const email = "elero@orifatech.com";
+    const password = process.env.INITIAL_SUPERADMIN_PASSWORD || "xqRGkd#*v95b4Yuvtju13$am&5u9rr@PUwpGh";
+    const name = "Elero O";
+
+    const result = await createAccount(ctx, {
+      provider: "password",
+      account: {
+        id: email,
+        secret: password,
+      },
+      profile: {
+        name,
+        email,
+        role: "super_admin",
+        createdAt: Date.now(),
+      },
+      shouldLinkViaEmail: false,
+      shouldLinkViaPhone: false,
+    });
+
+    return {
+      success: true,
+      userId: result.user._id,
+      accountId: result.account._id,
+      email,
+      name,
     };
   },
 });

@@ -1,30 +1,32 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getViewer, assertProjectAccess, assertSuperAdmin } from "./lib/auth";
+import { assertProjectAccess, assertSuperAdmin } from "./lib/auth";
+import { assertTenantContext, logSecurityAudit } from "./lib/tenant";
 
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer) return [];
+    const { organizationId, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      args.organizationId,
+      { resourceType: "projects" }
+    );
 
-    const targetOrgId = args.organizationId;
-    if (viewer.role === "super_admin") {
-      if (targetOrgId) {
+    if (isSuperAdmin) {
+      if (organizationId) {
         return await ctx.db
           .query("projects")
-          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
+          .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
           .collect();
       }
       return await ctx.db.query("projects").collect();
     }
 
-    const viewerOrgId = viewer.organizationId;
-    if (!viewerOrgId) return [];
+    if (!organizationId) return [];
 
     return await ctx.db
       .query("projects")
-      .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
+      .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
       .collect();
   },
 });
@@ -32,9 +34,6 @@ export const list = query({
 export const get = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer) return null;
-
     const { project } = await assertProjectAccess(ctx, args.projectId);
     const org = await ctx.db.get(project.organizationId);
     return {
@@ -59,9 +58,12 @@ export const create = mutation({
     hasMaintenanceContract: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const admin = await assertSuperAdmin(ctx);
 
-    // Generate random 24-character hexadecimal editor token
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found.");
+
+    // Generate random 32-character hexadecimal editor token
     const editorSecretToken = Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
@@ -70,13 +72,29 @@ export const create = mutation({
     const hasMaintenanceContract =
       args.hasMaintenanceContract ?? (gitPublishMode === "pull_request");
 
-    return await ctx.db.insert("projects", {
+    const projectId = await ctx.db.insert("projects", {
       ...args,
       gitPublishMode,
       hasMaintenanceContract,
       editorSecretToken,
       createdAt: Date.now(),
     });
+
+    await logSecurityAudit(ctx, {
+      tenantId: args.organizationId,
+      actorId: admin._id,
+      action: "project_created",
+      resourceType: "projects",
+      resourceId: projectId as string,
+      severity: "info",
+      details: {
+        name: args.name,
+        productionUrl: args.productionUrl,
+        gitPublishMode,
+      },
+    });
+
+    return projectId;
   },
 });
 
@@ -96,21 +114,45 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { projectId, ...updates } = args;
-    await assertProjectAccess(ctx, projectId);
+    const { user, project } = await assertProjectAccess(ctx, projectId);
+
     await ctx.db.patch(projectId, updates);
+
+    await logSecurityAudit(ctx, {
+      tenantId: project.organizationId,
+      actorId: user._id,
+      action: "project_updated",
+      resourceType: "projects",
+      resourceId: projectId as string,
+      severity: "info",
+      details: updates,
+    });
   },
 });
 
 export const rotateEditorSecret = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    await assertProjectAccess(ctx, args.projectId);
+    const { user, project } = await assertProjectAccess(ctx, args.projectId);
 
     const editorSecretToken = Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
     await ctx.db.patch(args.projectId, { editorSecretToken });
+
+    await logSecurityAudit(ctx, {
+      tenantId: project.organizationId,
+      actorId: user._id,
+      action: "project_editor_token_rotated",
+      resourceType: "projects",
+      resourceId: args.projectId as string,
+      severity: "warning",
+      details: {
+        projectName: project.name,
+      },
+    });
+
     return editorSecretToken;
   },
 });

@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { assertProjectAccess, getViewer } from "./lib/auth";
+import { logSecurityAudit } from "./lib/tenant";
 
 export const generateUploadUrl = mutation({
   args: { projectId: v.id("projects") },
@@ -23,7 +24,7 @@ export const registerAsset = mutation({
   handler: async (ctx, args) => {
     const { user, project } = await assertProjectAccess(ctx, args.projectId);
 
-    return await ctx.db.insert("mediaAssets", {
+    const assetId = await ctx.db.insert("mediaAssets", {
       projectId: args.projectId,
       organizationId: project.organizationId,
       originalName: args.originalName,
@@ -36,6 +37,22 @@ export const registerAsset = mutation({
       uploadedBy: user._id,
       createdAt: Date.now(),
     });
+
+    await logSecurityAudit(ctx, {
+      tenantId: project.organizationId,
+      actorId: user._id,
+      action: "media_asset_uploaded",
+      resourceType: "mediaAssets",
+      resourceId: assetId as string,
+      severity: "info",
+      details: {
+        originalName: args.originalName,
+        optimizedName: args.optimizedName,
+        sizeBytes: args.sizeBytes,
+      },
+    });
+
+    return assetId;
   },
 });
 

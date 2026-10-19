@@ -1,30 +1,32 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { assertSuperAdmin, getViewer } from "./lib/auth";
+import { assertSuperAdmin } from "./lib/auth";
+import { assertTenantContext, logSecurityAudit } from "./lib/tenant";
 
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer) return [];
+    const { organizationId, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      args.organizationId,
+      { resourceType: "emailLicenses" }
+    );
 
     let licenses;
-    const targetOrgId = args.organizationId;
-    if (viewer.role === "super_admin") {
-      if (targetOrgId) {
+    if (isSuperAdmin) {
+      if (organizationId) {
         licenses = await ctx.db
           .query("emailLicenses")
-          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
+          .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
           .collect();
       } else {
         licenses = await ctx.db.query("emailLicenses").collect();
       }
     } else {
-      const viewerOrgId = viewer.organizationId;
-      if (!viewerOrgId) return [];
+      if (!organizationId) return [];
       licenses = await ctx.db
         .query("emailLicenses")
-        .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
+        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
         .collect();
     }
 
@@ -63,16 +65,32 @@ export const add = mutation({
     paymentCardLast4: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const admin = await assertSuperAdmin(ctx);
 
     const now = Date.now();
     const days = (args.renewalDate - now) / (1000 * 60 * 60 * 24);
     const status = days < 0 ? "suspended" : days <= 14 ? "expiring_soon" : "active";
 
-    return await ctx.db.insert("emailLicenses", {
+    const licenseId = await ctx.db.insert("emailLicenses", {
       ...args,
       status,
     });
+
+    await logSecurityAudit(ctx, {
+      tenantId: args.organizationId,
+      actorId: admin._id,
+      action: "email_license_created",
+      resourceType: "emailLicenses",
+      resourceId: licenseId as string,
+      severity: "info",
+      details: {
+        provider: args.provider,
+        seatCount: args.seatCount,
+        renewalDate: args.renewalDate,
+      },
+    });
+
+    return licenseId;
   },
 });
 
@@ -94,19 +112,47 @@ export const update = mutation({
     currency: v.optional(v.string()),
     renewalDate: v.optional(v.number()),
     paymentCardLast4: v.optional(v.string()),
-    status: v.optional(v.union(v.literal("active"), v.literal("expiring_soon"), v.literal("suspended"))),
+    status: v.optional(
+      v.union(v.literal("active"), v.literal("expiring_soon"), v.literal("suspended"))
+    ),
   },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const admin = await assertSuperAdmin(ctx);
+    const lic = await ctx.db.get(args.licenseId);
+    if (!lic) throw new Error("License not found.");
+
     const { licenseId, ...updates } = args;
     await ctx.db.patch(licenseId, updates);
+
+    await logSecurityAudit(ctx, {
+      tenantId: lic.organizationId,
+      actorId: admin._id,
+      action: "email_license_updated",
+      resourceType: "emailLicenses",
+      resourceId: licenseId as string,
+      severity: "info",
+      details: updates,
+    });
   },
 });
 
 export const deleteLicense = mutation({
   args: { licenseId: v.id("emailLicenses") },
   handler: async (ctx, args) => {
-    await assertSuperAdmin(ctx);
+    const admin = await assertSuperAdmin(ctx);
+    const lic = await ctx.db.get(args.licenseId);
+    if (!lic) return;
+
     await ctx.db.delete(args.licenseId);
+
+    await logSecurityAudit(ctx, {
+      tenantId: lic.organizationId,
+      actorId: admin._id,
+      action: "email_license_deleted",
+      resourceType: "emailLicenses",
+      resourceId: args.licenseId as string,
+      severity: "warning",
+      details: { provider: lic.provider, adminEmail: lic.adminEmail },
+    });
   },
 });

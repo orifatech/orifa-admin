@@ -10,12 +10,14 @@
 
 import type * as actions_github from "../actions/github.js";
 import type * as actions_optimizeImage from "../actions/optimizeImage.js";
+import type * as auditLogs from "../auditLogs.js";
 import type * as auth from "../auth.js";
 import type * as blog from "../blog.js";
 import type * as crons from "../crons.js";
 import type * as domains from "../domains.js";
 import type * as emailLicenses from "../emailLicenses.js";
 import type * as http from "../http.js";
+import type * as invitations from "../invitations.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as media from "../media.js";
 import type * as organizations from "../organizations.js";
@@ -35,12 +37,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   "actions/github": typeof actions_github;
   "actions/optimizeImage": typeof actions_optimizeImage;
+  auditLogs: typeof auditLogs;
   auth: typeof auth;
   blog: typeof blog;
   crons: typeof crons;
   domains: typeof domains;
   emailLicenses: typeof emailLicenses;
   http: typeof http;
+  invitations: typeof invitations;
   "lib/auth": typeof lib_auth;
   media: typeof media;
   organizations: typeof organizations;

@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getViewer, getViewerOrThrow } from "./lib/auth";
+import { assertTenantContext, logSecurityAudit } from "./lib/tenant";
 
 async function getMasterCryptoKey(): Promise<CryptoKey> {
   const hex = process.env.VAULT_MASTER_KEY;
@@ -42,26 +42,27 @@ function base64ToUint8Array(base64: string): Uint8Array {
 export const list = query({
   args: { organizationId: v.optional(v.id("organizations")) },
   handler: async (ctx, args) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer) return [];
+    const { organizationId, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      args.organizationId,
+      { resourceType: "vaultCredentials" }
+    );
 
     let creds;
-    const targetOrgId = args.organizationId;
-    if (viewer.role === "super_admin") {
-      if (targetOrgId) {
+    if (isSuperAdmin) {
+      if (organizationId) {
         creds = await ctx.db
           .query("vaultCredentials")
-          .withIndex("by_org", (q) => q.eq("organizationId", targetOrgId))
+          .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
           .collect();
       } else {
         creds = await ctx.db.query("vaultCredentials").collect();
       }
     } else {
-      const viewerOrgId = viewer.organizationId;
-      if (!viewerOrgId) return [];
+      if (!organizationId) return [];
       creds = await ctx.db
         .query("vaultCredentials")
-        .withIndex("by_org", (q) => q.eq("organizationId", viewerOrgId))
+        .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
         .collect();
     }
 
@@ -88,8 +89,17 @@ export const list = query({
 export const getAuditLogs = query({
   args: { credentialId: v.id("vaultCredentials") },
   handler: async (ctx, args) => {
-    const viewer = await getViewer(ctx);
-    if (!viewer || viewer.role !== "super_admin") return [];
+    const cred = await ctx.db.get(args.credentialId);
+    if (!cred) return [];
+
+    const { viewer, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      cred.organizationId,
+      { resourceType: "vaultCredentials", resourceId: args.credentialId as string }
+    );
+
+    // Only super_admin or client_admin can inspect audit logs
+    if (!isSuperAdmin && viewer.role !== "client_admin") return [];
 
     const logs = await ctx.db
       .query("vaultAuditLogs")
@@ -128,7 +138,21 @@ export const addCredential = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
+    const { viewer, isSuperAdmin } = await assertTenantContext(ctx, args.organizationId, {
+      resourceType: "vaultCredentials",
+    });
+
+    if (!isSuperAdmin && viewer.role !== "client_admin") {
+      throw new Error("Forbidden: Only administrators can store encrypted credentials.");
+    }
+
+    // Verify project belongs to organization if provided
+    if (args.projectId) {
+      const project = await ctx.db.get(args.projectId);
+      if (!project || project.organizationId !== args.organizationId) {
+        throw new Error("Invalid project for this organization.");
+      }
+    }
 
     const key = await getMasterCryptoKey();
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -162,6 +186,19 @@ export const addCredential = mutation({
       timestamp: Date.now(),
     });
 
+    await logSecurityAudit(ctx, {
+      tenantId: args.organizationId,
+      actorId: viewer._id,
+      action: "vault_credential_created",
+      resourceType: "vaultCredentials",
+      resourceId: credentialId as string,
+      severity: "info",
+      details: {
+        title: args.title,
+        category: args.category,
+      },
+    });
+
     return credentialId;
   },
 });
@@ -169,12 +206,18 @@ export const addCredential = mutation({
 export const revealSecret = mutation({
   args: { credentialId: v.id("vaultCredentials") },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
     const cred = await ctx.db.get(args.credentialId);
     if (!cred) throw new Error("Credential not found.");
 
-    if (viewer.role !== "super_admin" && viewer.organizationId !== cred.organizationId) {
-      throw new Error("Forbidden: You do not have access to view this secret.");
+    const { viewer, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      cred.organizationId,
+      { resourceType: "vaultCredentials", resourceId: args.credentialId as string }
+    );
+
+    // OWASP Least Privilege: Only super admins and client admins can reveal credentials
+    if (!isSuperAdmin && viewer.role !== "client_admin") {
+      throw new Error("Forbidden: You do not have permissions to decrypt this secret.");
     }
 
     const key = await getMasterCryptoKey();
@@ -197,6 +240,18 @@ export const revealSecret = mutation({
       timestamp: Date.now(),
     });
 
+    await logSecurityAudit(ctx, {
+      tenantId: cred.organizationId,
+      actorId: viewer._id,
+      action: "vault_secret_revealed",
+      resourceType: "vaultCredentials",
+      resourceId: args.credentialId as string,
+      severity: "warning",
+      details: {
+        credentialTitle: cred.title,
+      },
+    });
+
     return plainSecret;
   },
 });
@@ -204,14 +259,31 @@ export const revealSecret = mutation({
 export const deleteCredential = mutation({
   args: { credentialId: v.id("vaultCredentials") },
   handler: async (ctx, args) => {
-    const viewer = await getViewerOrThrow(ctx);
     const cred = await ctx.db.get(args.credentialId);
     if (!cred) return;
 
-    if (viewer.role !== "super_admin") {
-      throw new Error("Only super administrators can delete credentials.");
+    const { viewer, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      cred.organizationId,
+      { resourceType: "vaultCredentials", resourceId: args.credentialId as string }
+    );
+
+    if (!isSuperAdmin && viewer.role !== "client_admin") {
+      throw new Error("Forbidden: Only administrators can delete credentials.");
     }
 
     await ctx.db.delete(args.credentialId);
+
+    await logSecurityAudit(ctx, {
+      tenantId: cred.organizationId,
+      actorId: viewer._id,
+      action: "vault_credential_deleted",
+      resourceType: "vaultCredentials",
+      resourceId: args.credentialId as string,
+      severity: "warning",
+      details: {
+        credentialTitle: cred.title,
+      },
+    });
   },
 });

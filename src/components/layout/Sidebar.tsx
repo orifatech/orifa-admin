@@ -12,31 +12,104 @@ import {
   Mail,
   KeyRound,
   Building2,
+  ShieldAlert,
   LogOut,
   ChevronDown,
+  type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
 
-const navigationItems = [
+type UserRole = "super_admin" | "client_admin" | "client_editor";
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  allowedRoles?: UserRole[];
+}
+
+interface NavSection {
+  section: string;
+  allowedRoles?: UserRole[];
+}
+
+type NavigationEntry = NavItem | NavSection;
+
+const navigationItems: NavigationEntry[] = [
   { section: "Websites & Content" },
   { name: "Projects & Sites", href: "/projects", icon: Globe },
   { name: "Staged Changes", href: "/changes", icon: GitPullRequest },
   { name: "Media Assets", href: "/media", icon: ImageIcon },
   { name: "Blog Studio", href: "/blog", icon: FileText },
-  { section: "Agency Operations" },
-  { name: "Domain Monitors", href: "/domains", icon: Clock },
-  { name: "Retainers & Billing", href: "/billing", icon: CreditCard },
-  { name: "Email Licenses", href: "/licenses", icon: Mail },
-  { name: "Encrypted Vault", href: "/vault", icon: KeyRound },
-  { name: "Organizations", href: "/organizations", icon: Building2 },
+  {
+    section: "Operations & Governance",
+    allowedRoles: ["super_admin", "client_admin"],
+  },
+  {
+    name: "Domain Monitors",
+    href: "/domains",
+    icon: Clock,
+    allowedRoles: ["super_admin", "client_admin"],
+  },
+  {
+    name: "Retainers & Billing",
+    href: "/billing",
+    icon: CreditCard,
+    allowedRoles: ["super_admin", "client_admin"],
+  },
+  {
+    name: "Email Licenses",
+    href: "/licenses",
+    icon: Mail,
+    allowedRoles: ["super_admin", "client_admin"],
+  },
+  {
+    name: "Encrypted Vault",
+    href: "/vault",
+    icon: KeyRound,
+    allowedRoles: ["super_admin", "client_admin"],
+  },
+  {
+    name: "Audit & Security Logs",
+    href: "/audit-logs",
+    icon: ShieldAlert,
+    allowedRoles: ["super_admin", "client_admin"],
+  },
+  {
+    section: "Agency Administration",
+    allowedRoles: ["super_admin"],
+  },
+  {
+    name: "Organizations",
+    href: "/organizations",
+    icon: Building2,
+    allowedRoles: ["super_admin"],
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const viewer = useQuery(api.users.viewer);
   const { signOut } = useAuthActions();
+
+  const userRole = (viewer?.role ?? "client_editor") as UserRole;
+
+  // Filter items by least-privilege role
+  const visibleItems = navigationItems.filter((item) => {
+    if (!item.allowedRoles) return true;
+    return item.allowedRoles.includes(userRole);
+  });
+
+  const roleDisplay =
+    viewer?.role === "super_admin"
+      ? "Agency Super Admin"
+      : viewer?.role === "client_admin"
+      ? "Client Admin"
+      : viewer?.role === "client_editor"
+      ? "Content Editor"
+      : "Guest";
 
   return (
     <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/70 backdrop-blur-md flex flex-col h-screen sticky top-0 shrink-0 transition-colors">
@@ -60,12 +133,12 @@ export function Sidebar() {
         <div className="flex items-center justify-between px-2 py-1 text-xs text-zinc-500 dark:text-zinc-400">
           <span>Active Context</span>
           <span className="text-[10px] uppercase font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/40 px-1.5 py-0.5 rounded">
-            {viewer?.role?.replace("_", " ") || "Agency Super Admin"}
+            {roleDisplay}
           </span>
         </div>
         <div className="mt-1 px-2 py-1.5 bg-zinc-100/80 dark:bg-zinc-800/50 rounded-md border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-between text-xs text-zinc-800 dark:text-zinc-200">
           <span className="truncate font-medium">
-            {viewer?.organization?.name || "All Client Workspaces"}
+            {viewer?.organization?.name || (viewer?.role === "super_admin" ? "All Client Workspaces" : "Orifa Workspace")}
           </span>
           <ChevronDown className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
         </div>
@@ -73,7 +146,7 @@ export function Sidebar() {
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {navigationItems.map((item, idx) => {
+        {visibleItems.map((item, idx) => {
           if ("section" in item && item.section) {
             return (
               <div
@@ -85,7 +158,7 @@ export function Sidebar() {
             );
           }
 
-          if (!item.href || !item.icon) return null;
+          if (!("href" in item) || !item.href || !item.icon) return null;
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
 
@@ -115,10 +188,10 @@ export function Sidebar() {
             </div>
             <div className="min-w-0">
               <div className="text-xs font-medium text-zinc-900 dark:text-zinc-200 truncate">
-                {viewer?.name || "Elero O"}
+                {viewer?.name || viewer?.email || "User"}
               </div>
               <div className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                {viewer?.email || "elero@orifatech.com"}
+                {viewer?.email || "user@orifatech.com"}
               </div>
             </div>
           </div>

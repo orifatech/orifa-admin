@@ -14,6 +14,9 @@ export default defineSchema({
     contactEmail: v.string(),
     phone: v.optional(v.string()),
     billingStatus: v.union(v.literal("active"), v.literal("past_due"), v.literal("free")),
+    status: v.optional(
+      v.union(v.literal("active"), v.literal("suspended"), v.literal("offboarding"), v.literal("deleted"))
+    ),
     createdAt: v.number(),
   }).index("by_slug", ["slug"]),
 
@@ -221,4 +224,43 @@ export default defineSchema({
     action: v.union(v.literal("viewed_secret"), v.literal("updated"), v.literal("created"), v.literal("deleted")),
     timestamp: v.number(),
   }).index("by_credential", ["credentialId"]),
+
+  // ==========================================
+  // 10. MULTI-TENANT INVITATIONS & ONBOARDING (OWASP §7)
+  // ==========================================
+  invitations: defineTable({
+    organizationId: v.id("organizations"),
+    email: v.string(),
+    role: v.union(v.literal("client_admin"), v.literal("client_editor")),
+    tokenHash: v.string(), // SHA-256 hash of high-entropy invitation token
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+      v.literal("expired")
+    ),
+    invitedBy: v.id("users"),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_tokenHash", ["tokenHash"])
+    .index("by_email", ["email"])
+    .index("by_org", ["organizationId"]),
+
+  // ==========================================
+  // 11. TENANT SECURITY AUDIT LOGS (OWASP §9 & §10)
+  // ==========================================
+  auditLogs: defineTable({
+    tenantId: v.optional(v.id("organizations")), // null for platform-wide events
+    actorId: v.optional(v.id("users")),
+    action: v.string(),
+    resourceType: v.string(),
+    resourceId: v.optional(v.string()),
+    severity: v.union(v.literal("info"), v.literal("warning"), v.literal("critical")),
+    details: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_tenant", ["tenantId", "timestamp"])
+    .index("by_severity", ["severity", "timestamp"])
+    .index("by_actor", ["actorId", "timestamp"]),
 });

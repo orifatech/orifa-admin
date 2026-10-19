@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { assertProjectAccess, getViewer } from "./lib/auth";
+import { logSecurityAudit } from "./lib/tenant";
 
 export const listByProject = query({
   args: {
@@ -75,10 +76,24 @@ export const stageChange = mutation({
         status: "pending_review",
         batchName: args.batchName ?? existing.batchName,
       });
+
+      await logSecurityAudit(ctx, {
+        tenantId: project.organizationId,
+        actorId: user._id,
+        action: "staged_change_updated",
+        resourceType: "stagedChanges",
+        resourceId: existing._id as string,
+        severity: "info",
+        details: {
+          targetFile: args.targetFile,
+          contentKey: args.contentKey,
+        },
+      });
+
       return existing._id;
     }
 
-    return await ctx.db.insert("stagedChanges", {
+    const changeId = await ctx.db.insert("stagedChanges", {
       projectId: args.projectId,
       organizationId: project.organizationId,
       authorId: user._id,
@@ -91,6 +106,21 @@ export const stageChange = mutation({
       batchName: args.batchName,
       createdAt: Date.now(),
     });
+
+    await logSecurityAudit(ctx, {
+      tenantId: project.organizationId,
+      actorId: user._id,
+      action: "staged_change_created",
+      resourceType: "stagedChanges",
+      resourceId: changeId as string,
+      severity: "info",
+      details: {
+        targetFile: args.targetFile,
+        contentKey: args.contentKey,
+      },
+    });
+
+    return changeId;
   },
 });
 
@@ -110,11 +140,24 @@ export const updateStatus = mutation({
     const change = await ctx.db.get(args.changeId);
     if (!change) throw new Error("Staged change not found.");
 
-    await assertProjectAccess(ctx, change.projectId);
+    const { user, project } = await assertProjectAccess(ctx, change.projectId);
 
     await ctx.db.patch(args.changeId, {
       status: args.status,
       reviewerFeedback: args.reviewerFeedback,
+    });
+
+    await logSecurityAudit(ctx, {
+      tenantId: project.organizationId,
+      actorId: user._id,
+      action: "staged_change_status_updated",
+      resourceType: "stagedChanges",
+      resourceId: args.changeId as string,
+      severity: "info",
+      details: {
+        status: args.status,
+        feedback: args.reviewerFeedback,
+      },
     });
   },
 });
@@ -127,8 +170,17 @@ export const batchApprove = mutation({
     for (const id of args.changeIds) {
       const change = await ctx.db.get(id);
       if (change) {
-        await assertProjectAccess(ctx, change.projectId);
+        const { user, project } = await assertProjectAccess(ctx, change.projectId);
         await ctx.db.patch(id, { status: "approved" });
+
+        await logSecurityAudit(ctx, {
+          tenantId: project.organizationId,
+          actorId: user._id,
+          action: "staged_change_approved",
+          resourceType: "stagedChanges",
+          resourceId: id as string,
+          severity: "info",
+        });
       }
     }
   },
@@ -140,8 +192,21 @@ export const deleteChange = mutation({
     const change = await ctx.db.get(args.changeId);
     if (!change) throw new Error("Staged change not found.");
 
-    await assertProjectAccess(ctx, change.projectId);
+    const { user, project } = await assertProjectAccess(ctx, change.projectId);
     await ctx.db.delete(args.changeId);
+
+    await logSecurityAudit(ctx, {
+      tenantId: project.organizationId,
+      actorId: user._id,
+      action: "staged_change_deleted",
+      resourceType: "stagedChanges",
+      resourceId: args.changeId as string,
+      severity: "info",
+      details: {
+        targetFile: change.targetFile,
+        contentKey: change.contentKey,
+      },
+    });
   },
 });
 
@@ -154,13 +219,17 @@ export const markPRCreated = mutation({
   },
   handler: async (ctx, args) => {
     for (const id of args.changeIds) {
-      await ctx.db.patch(id, {
-        status: "pr_created",
-        pullRequestUrl: args.pullRequestUrl,
-        pullRequestNumber: args.pullRequestNumber,
-        branchName: args.branchName,
-        committedAt: Date.now(),
-      });
+      const change = await ctx.db.get(id);
+      if (change) {
+        await assertProjectAccess(ctx, change.projectId);
+        await ctx.db.patch(id, {
+          status: "pr_created",
+          pullRequestUrl: args.pullRequestUrl,
+          pullRequestNumber: args.pullRequestNumber,
+          branchName: args.branchName,
+          committedAt: Date.now(),
+        });
+      }
     }
   },
 });
@@ -174,13 +243,17 @@ export const markDirectCommitted = mutation({
   },
   handler: async (ctx, args) => {
     for (const id of args.changeIds) {
-      await ctx.db.patch(id, {
-        status: "merged",
-        commitUrl: args.commitUrl,
-        commitSha: args.commitSha,
-        branchName: args.branchName,
-        committedAt: Date.now(),
-      });
+      const change = await ctx.db.get(id);
+      if (change) {
+        await assertProjectAccess(ctx, change.projectId);
+        await ctx.db.patch(id, {
+          status: "merged",
+          commitUrl: args.commitUrl,
+          commitSha: args.commitSha,
+          branchName: args.branchName,
+          committedAt: Date.now(),
+        });
+      }
     }
   },
 });

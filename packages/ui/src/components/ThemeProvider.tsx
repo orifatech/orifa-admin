@@ -31,7 +31,7 @@ function getStoredTheme(): Theme {
   } catch {
     // Ignore storage read errors
   }
-  return "system";
+  return "light";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -39,10 +39,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const storedTheme = useSyncExternalStore<Theme>(
     subscribeStorage,
     getStoredTheme,
-    (): Theme => "system"
+    (): Theme => "light"
   );
   const [themeOverride, setThemeOverride] = useState<Theme | null>(null);
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
 
   const theme: Theme = themeOverride ?? storedTheme;
 
@@ -52,13 +52,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
     const applyTheme = () => {
-      let active: ResolvedTheme = "dark";
+      let active: ResolvedTheme = "light";
       if (theme === "system") {
         active = mediaQuery.matches ? "dark" : "light";
-      } else if (theme === "light") {
-        active = "light";
-      } else {
+      } else if (theme === "dark") {
         active = "dark";
+      } else {
+        active = "light";
       }
 
       setResolvedTheme(active);

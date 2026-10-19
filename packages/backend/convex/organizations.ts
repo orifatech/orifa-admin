@@ -45,6 +45,10 @@ export const create = mutation({
     status: v.optional(
       v.union(v.literal("active"), v.literal("suspended"), v.literal("offboarding"), v.literal("deleted"))
     ),
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
+    theme: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const admin = await assertSuperAdmin(ctx);
@@ -65,6 +69,10 @@ export const create = mutation({
       phone: args.phone,
       billingStatus: args.billingStatus ?? "active",
       status: args.status ?? "active",
+      logoUrl: args.logoUrl,
+      primaryColor: args.primaryColor ?? "#006e2b",
+      secondaryColor: args.secondaryColor ?? "#16a34a",
+      theme: args.theme ?? "white",
       createdAt: Date.now(),
     });
 
@@ -97,6 +105,10 @@ export const update = mutation({
     status: v.optional(
       v.union(v.literal("active"), v.literal("suspended"), v.literal("offboarding"), v.literal("deleted"))
     ),
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
+    theme: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const admin = await assertSuperAdmin(ctx);

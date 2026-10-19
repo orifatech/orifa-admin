@@ -18,7 +18,7 @@
       "@convex/*": ["./packages/backend/convex/*"],
       "@orifa/ui": ["./packages/ui"],
       "@orifa/ui/*": ["./packages/ui/*"],
-      "@/*": ["./apps/agency-admin/src/*"]
+      "@/*": ["./apps/agency/src/*"]
     }
   },
   "include": [

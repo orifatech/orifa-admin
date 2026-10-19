@@ -17,6 +17,10 @@ export default defineSchema({
     status: v.optional(
       v.union(v.literal("active"), v.literal("suspended"), v.literal("offboarding"), v.literal("deleted"))
     ),
+    logoUrl: v.optional(v.string()),
+    primaryColor: v.optional(v.string()), // Hex color e.g. #006e2b
+    secondaryColor: v.optional(v.string()), // Hex color e.g. #16a34a (max 2 colors)
+    theme: v.optional(v.string()), // default "white"
     createdAt: v.number(),
   }).index("by_slug", ["slug"]),
 

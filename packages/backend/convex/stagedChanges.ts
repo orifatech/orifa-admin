@@ -1,7 +1,36 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { assertProjectAccess, getViewer } from "./lib/auth";
-import { logSecurityAudit } from "./lib/tenant";
+import { assertTenantContext, logSecurityAudit } from "./lib/tenant";
+
+export const list = query({
+  args: { organizationId: v.optional(v.id("organizations")) },
+  handler: async (ctx, args) => {
+    const { organizationId, isSuperAdmin } = await assertTenantContext(
+      ctx,
+      args.organizationId,
+      { resourceType: "stagedChanges" }
+    );
+
+    if (isSuperAdmin) {
+      if (organizationId) {
+        return await ctx.db
+          .query("stagedChanges")
+          .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+          .order("desc")
+          .collect();
+      }
+      return await ctx.db.query("stagedChanges").order("desc").collect();
+    }
+
+    if (!organizationId) return [];
+    return await ctx.db
+      .query("stagedChanges")
+      .withIndex("by_org", (q) => q.eq("organizationId", organizationId))
+      .order("desc")
+      .collect();
+  },
+});
 
 export const listByProject = query({
   args: {
